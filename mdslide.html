@@ -193,6 +193,9 @@
   .slide p  { font-size: 22px; line-height: 1.75; margin-bottom: 14px; }
   .slide li { font-size: 22px; line-height: 1.8; margin-bottom: 6px; }
   .slide ul, .slide ol { padding-left: 34px; margin-bottom: 14px; }
+  .slide li ul, .slide li ol { margin-bottom: 0; padding-left: 30px; }
+  .slide li li { font-size: 20px; line-height: 1.7; margin-bottom: 4px; }
+  .slide li li li { font-size: 18px; line-height: 1.65; margin-bottom: 3px; }
   .slide blockquote {
     border-left: 5px solid;
     padding: 8px 22px;
@@ -771,6 +774,24 @@
       links.join('') + shapes.join('') + '</svg></div>';
   }
 
+  // build nested <ul>/<ol> markup from a flat item list with depths
+  function renderNestedList(items) {
+    var out = [], stack = [];
+    items.forEach(function (it) {
+      var d = Math.min(it.depth, stack.length); // never skip a level
+      if (d >= stack.length) {
+        out.push('<' + it.type + '>');
+        stack.push(it.type);
+      } else {
+        while (stack.length - 1 > d) out.push('</li></' + stack.pop() + '>');
+        out.push('</li>');
+      }
+      out.push('<li>' + it.html);
+    });
+    while (stack.length) out.push('</li></' + stack.pop() + '>');
+    return out.join('');
+  }
+
   function parseBlocks(lines) {
     var html = [], i = 0;
     while (i < lines.length) {
@@ -825,25 +846,19 @@
         continue;
       }
 
-      // unordered list
-      if (/^\s*[-*+]\s+/.test(line)) {
-        var ubuf = [];
-        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
-          ubuf.push('<li>' + inline(lines[i].replace(/^\s*[-*+]\s+/, '')) + '</li>');
+      // list (ordered / unordered, nested by 2-space indent)
+      if (/^\s*([-*+]|\d+\.)\s+/.test(line)) {
+        var items = [];
+        while (i < lines.length && /^\s*([-*+]|\d+\.)\s+/.test(lines[i])) {
+          var lm = lines[i].match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+          items.push({
+            depth: Math.floor(lm[1].replace(/\t/g, '  ').length / 2),
+            type: /^\d+\.$/.test(lm[2]) ? 'ol' : 'ul',
+            html: inline(lm[3])
+          });
           i++;
         }
-        html.push('<ul>' + ubuf.join('') + '</ul>');
-        continue;
-      }
-
-      // ordered list
-      if (/^\s*\d+\.\s+/.test(line)) {
-        var obuf = [];
-        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-          obuf.push('<li>' + inline(lines[i].replace(/^\s*\d+\.\s+/, '')) + '</li>');
-          i++;
-        }
-        html.push('<ol>' + obuf.join('') + '</ol>');
+        html.push(renderNestedList(items));
         continue;
       }
 
@@ -957,10 +972,11 @@
     '## How to Use',
     '',
     '- Put `---` on its own line to start a new slide',
-    '- Supports **bold**, *italic*, ~~strikethrough~~, `inline code`',
-    '- Supports [links](https://example.com) and images',
+    '- **Bold**, *italic*, ~~strikethrough~~, `code`, [links](https://example.com), images',
     '- Open a local folder as a **Project** to browse, save and load files',
-    '- Click "Download PDF" to export',
+    '- Nested lists: indent by two spaces',
+    '  - level two',
+    '    - level three',
     '',
     '---',
     '',

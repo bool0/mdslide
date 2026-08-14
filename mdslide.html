@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Slide — Markdown Slides</title>
+<style>
+  :root {
+    --ui-bg: #1e1f24;
+    --ui-panel: #26272e;
+    --ui-border: #3a3b44;
+    --ui-text: #e8e8ea;
+    --ui-dim: #9a9ba4;
+    --ui-accent: #4f8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ======== Top toolbar ======== */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--ui-panel);
+    border-bottom: 1px solid var(--ui-border);
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+  }
+  #toolbar .logo { font-weight: 700; font-size: 15px; letter-spacing: .5px; margin-right: 4px; }
+  #toolbar .logo span { color: var(--ui-accent); }
+  #toolbar label { font-size: 13px; color: var(--ui-dim); }
+  #toolbar select, #toolbar button {
+    font: inherit;
+    font-size: 13px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--ui-border);
+    background: #31323b;
+    color: var(--ui-text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #toolbar select:hover, #toolbar button:hover { border-color: var(--ui-accent); }
+  #toolbar button.primary { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+  #toolbar button.primary:hover { filter: brightness(1.1); }
+  #toolbar .spacer { flex: 1; }
+  #fileName {
+    font-size: 12px;
+    color: var(--ui-dim);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #fileName.dirty::after { content: " •"; color: var(--ui-accent); font-weight: 700; }
+  #slideNav { display: flex; align-items: center; gap: 6px; }
+  #slideNav button { padding: 5px 10px; }
+  #slideCounter { font-size: 13px; color: var(--ui-dim); min-width: 52px; text-align: center; }
+  #status { font-size: 12px; color: var(--ui-dim); }
+
+  /* ======== Main split pane ======== */
+  #main { display: flex; flex: 1 1 auto; min-height: 0; }
+
+  /* Project sidebar */
+  #sidebar {
+    width: 210px;
+    flex: 0 0 auto;
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-border);
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+  }
+  #sidebar.open { display: flex; }
+  #sidebarHeader {
+    padding: 10px 12px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--ui-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #sidebarHeader button {
+    background: none;
+    border: none;
+    color: var(--ui-dim);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 6px;
+  }
+  #sidebarHeader button:hover { color: var(--ui-text); }
+  #fileList { overflow-y: auto; flex: 1; padding-bottom: 10px; }
+  .file-row {
+    padding: 4px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ui-text);
+  }
+  .file-row:hover { background: #31323b; }
+  .file-row.active { background: var(--ui-accent); color: #fff; }
+  .file-row.dir { color: var(--ui-dim); font-weight: 600; cursor: default; }
+  .file-row.muted { color: #6b6c75; }
+  .file-row .icon { margin-right: 6px; }
+
+  #editorPane {
+    width: 40%;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--ui-border);
+  }
+  #editorWrap { flex: 1; display: flex; min-height: 0; }
+  #gutter {
+    flex: 0 0 auto;
+    min-width: 40px;
+    padding: 16px 10px 16px 4px;
+    text-align: right;
+    background: var(--ui-bg);
+    border-right: 1px solid var(--ui-border);
+    color: #565863;
+    font-family: "SF Mono", "Cascadia Code", Consolas, Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow: hidden;
+    white-space: pre;
+    user-select: none;
+  }
+  #editor {
+    flex: 1;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: "SF Mono", "Cascadia Code", Consolas, Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 16px 18px 16px 12px;
+    tab-size: 2;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  #divider {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    flex: 0 0 auto;
+  }
+  #divider:hover { background: var(--ui-accent); }
+  #previewPane {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #16171b;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+  }
+  #slideWrap { position: relative; }
+
+  /* ======== Slide base (design size 960×540) ======== */
+  .slide {
+    width: 960px;
+    height: 540px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 56px 72px;
+    border-radius: 4px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.45);
+    position: relative;
+  }
+  .slide h1 { font-size: 52px; line-height: 1.25; margin-bottom: 24px; }
+  .slide h2 { font-size: 40px; line-height: 1.3; margin-bottom: 20px; }
+  .slide h3 { font-size: 30px; line-height: 1.35; margin-bottom: 14px; }
+  .slide p  { font-size: 22px; line-height: 1.75; margin-bottom: 14px; }
+  .slide li { font-size: 22px; line-height: 1.8; margin-bottom: 6px; }
+  .slide ul, .slide ol { padding-left: 34px; margin-bottom: 14px; }
+  .slide blockquote {
+    border-left: 5px solid;
+    padding: 8px 22px;
+    margin: 14px 0;
+    font-size: 22px;
+    opacity: .85;
+  }
+  .slide blockquote p { margin-bottom: 0; }
+  .slide code {
+    font-family: "SF Mono", "Cascadia Code", Consolas, Menlo, monospace;
+    font-size: .85em;
+    padding: 2px 8px;
+    border-radius: 5px;
+  }
+  .slide pre {
+    padding: 18px 22px;
+    border-radius: 10px;
+    margin: 14px 0;
+    overflow: hidden;
+  }
+  .slide pre code { padding: 0; background: none; font-size: 17px; line-height: 1.6; }
+  .slide pre code.numbered { display: block; counter-reset: codeline; }
+  .slide pre code.numbered .cl { display: block; }
+  .slide pre code.numbered .cl::before {
+    counter-increment: codeline;
+    content: counter(codeline);
+    display: inline-block;
+    min-width: 1.6em;
+    margin-right: 16px;
+    text-align: right;
+    opacity: .4;
+    user-select: none;
+  }
+  .slide table { border-collapse: collapse; margin: 14px 0; font-size: 20px; }
+  .slide th, .slide td { border: 1px solid; padding: 8px 18px; }
+  .slide img { max-width: 100%; max-height: 320px; border-radius: 8px; margin: 10px 0; object-fit: contain; }
+  .slide a { text-decoration: underline; }
+  .slide hr { display: none; }
+  .slide.is-title { text-align: center; align-items: center; }
+  .slide.is-title h1 { font-size: 64px; }
+  .slide .page-num {
+    position: absolute;
+    right: 28px;
+    bottom: 18px;
+    font-size: 15px;
+    opacity: .5;
+  }
+
+  /* Mind map (```mindmap fenced block) */
+  .slide .mindmap { margin: 10px 0; text-align: center; }
+  .slide .mindmap svg { max-width: 100%; max-height: 380px; height: auto; }
+
+  /* Columns (||| separator inside a slide) */
+  .slide .cols { display: flex; gap: 44px; align-items: center; width: 100%; min-height: 0; }
+  .slide .cols .col { flex: 1; min-width: 0; }
+  .slide .cols .col img { display: block; margin: 10px auto; max-height: 360px; }
+  .slide .cols .col pre { margin-top: 0; }
+
+  /* Citations & references */
+  .slide .cite-missing { color: #e05252; font-weight: 600; }
+  .slide ol.refs, .slide ul.refs { padding-left: 30px; }
+  .slide .refs li { font-size: 17px; line-height: 1.5; margin-bottom: 10px; }
+  .slide .refs .venue { font-style: italic; }
+
+  /* ======== Themes ======== */
+  /* 1. Clean */
+  .theme-clean { background: #ffffff; color: #24292f; }
+  .theme-clean h1, .theme-clean h2 { color: #1a56db; }
+  .theme-clean h3 { color: #333; }
+  .theme-clean blockquote { border-color: #1a56db; background: #f0f5ff; color: #445; }
+  .theme-clean code { background: #f0f2f5; color: #c7254e; }
+  .theme-clean pre { background: #1e1f24; }
+  .theme-clean pre code { color: #e8e8ea; }
+  .theme-clean th { background: #f0f5ff; }
+  .theme-clean th, .theme-clean td { border-color: #d5dbe3; }
+  .theme-clean a { color: #1a56db; }
+  .theme-clean strong { color: #1a56db; }
+
+  /* 2. Dark */
+  .theme-dark { background: #16181d; color: #e6e6e9; }
+  .theme-dark h1, .theme-dark h2 { color: #5dd3e8; }
+  .theme-dark h3 { color: #9ecbff; }
+  .theme-dark blockquote { border-color: #5dd3e8; background: rgba(93,211,232,.08); }
+  .theme-dark code { background: #2a2d35; color: #ffb86c; }
+  .theme-dark pre { background: #0d0e12; }
+  .theme-dark pre code { color: #d7d9de; }
+  .theme-dark th { background: #22252c; }
+  .theme-dark th, .theme-dark td { border-color: #3a3d46; }
+  .theme-dark a { color: #5dd3e8; }
+  .theme-dark strong { color: #ffb86c; }
+
+  /* 3. Academic */
+  .theme-academic { background: #f7f8fa; color: #2c3e50; font-family: Georgia, "Songti SC", "SimSun", serif; }
+  .theme-academic h1, .theme-academic h2 { color: #14335c; border-bottom: 3px solid #14335c; padding-bottom: 10px; }
+  .theme-academic h3 { color: #14335c; }
+  .theme-academic blockquote { border-color: #b08d3e; background: #faf6ec; }
+  .theme-academic code { background: #e9ecf1; color: #8b2635; }
+  .theme-academic pre { background: #14335c; }
+  .theme-academic pre code { color: #eef1f5; }
+  .theme-academic th { background: #e9eef5; }
+  .theme-academic th, .theme-academic td { border-color: #c3ccd8; }
+  .theme-academic a { color: #14335c; }
+  .theme-academic strong { color: #8b2635; }
+
+  /* 4. Gradient */
+  .theme-gradient { background: linear-gradient(135deg, #4b2f8f 0%, #7b3fa0 55%, #b0448f 100%); color: #ffffff; }
+  .theme-gradient h1, .theme-gradient h2, .theme-gradient h3 { color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .theme-gradient blockquote { border-color: #ffd76e; background: rgba(255,255,255,.12); }
+  .theme-gradient code { background: rgba(0,0,0,.3); color: #ffd76e; }
+  .theme-gradient pre { background: rgba(0,0,0,.35); }
+  .theme-gradient pre code { color: #f5f0ff; }
+  .theme-gradient th { background: rgba(255,255,255,.15); }
+  .theme-gradient th, .theme-gradient td { border-color: rgba(255,255,255,.4); }
+  .theme-gradient a { color: #ffd76e; }
+  .theme-gradient strong { color: #ffd76e; }
+
+  /* 5. Paper */
+  .theme-paper { background: #f5efe2; color: #3d332a; font-family: Georgia, "Kaiti SC", "KaiTi", "STKaiti", serif; }
+  .theme-paper h1, .theme-paper h2 { color: #7a3b2e; }
+  .theme-paper h3 { color: #7a3b2e; }
+  .theme-paper blockquote { border-color: #7a3b2e; background: #efe6d2; }
+  .theme-paper code { background: #e8dfc9; color: #7a3b2e; }
+  .theme-paper pre { background: #3d332a; }
+  .theme-paper pre code { color: #f5efe2; }
+  .theme-paper th { background: #ece3cf; }
+  .theme-paper th, .theme-paper td { border-color: #cbbfa3; }
+  .theme-paper a { color: #7a3b2e; }
+  .theme-paper strong { color: #7a3b2e; }
+
+  /* ======== Print (PDF export) ======== */
+  #printArea { display: none; }
+  @media print {
+    @page { size: 960px 540px; margin: 0; }
+    body { display: block; overflow: visible; background: #fff; }
+    #toolbar, #main { display: none !important; }
+    #printArea { display: block; }
+    #printArea .slide {
+      width: 960px;
+      height: 540px;
+      box-shadow: none;
+      border-radius: 0;
+      page-break-after: always;
+      break-after: page;
+    }
+    #printArea .slide:last-child { page-break-after: auto; break-after: auto; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+
+  /* Simple mobile fallback */
+  @media (max-width: 700px) {
+    #main { flex-direction: column; }
+    #sidebar { width: 100%; max-height: 30%; flex: 0 0 auto; }
+    #editorPane { width: 100% !important; height: 45%; border-right: none; border-bottom: 1px solid var(--ui-border); }
+    #divider { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <div class="logo">MD<span>Slide</span></div>
+  <button id="folderBtn" title="Open a local folder as project">&#128193; Project</button>
+  <button id="saveBtn" title="Save markdown (Ctrl/Cmd+S)">&#128190; Save</button>
+  <button id="importBtn" title="Import a markdown file">&#11014; Import</button>
+  <button id="imageBtn" title="Insert a local image">&#128444; Image</button>
+  <span id="fileName">unsaved draft</span>
+  <label>Theme
+    <select id="themeSelect">
+      <option value="theme-clean">Clean</option>
+      <option value="theme-dark">Dark</option>
+      <option value="theme-academic">Academic</option>
+      <option value="theme-gradient">Gradient</option>
+      <option value="theme-paper">Paper</option>
+    </select>
+  </label>
+  <label>Cite
+    <select id="citeSelect" title="In-text citation style">
+      <option value="numeric">[1]</option>
+      <option value="author-year">(Author, Year)</option>
+    </select>
+  </label>
+  <div id="slideNav">
+    <button id="prevBtn" title="Previous (←)">&#9664;</button>
+    <span id="slideCounter">1 / 1</span>
+    <button id="nextBtn" title="Next (→)">&#9654;</button>
+  </div>
+  <div class="spacer"></div>
+  <span id="status">Use --- to split slides</span>
+  <button id="pdfBtn" class="primary">&#11015; Download PDF</button>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebarHeader">
+      <span>PROJECT FILES</span>
+      <span>
+        <button id="refreshBtn" title="Refresh file list">&#10227;</button>
+        <button id="closeSidebarBtn" title="Close project">&#10005;</button>
+      </span>
+    </div>
+    <div id="fileList"></div>
+  </div>
+  <div id="editorPane">
+    <div id="editorWrap">
+      <div id="gutter">1</div>
+      <textarea id="editor" spellcheck="false" wrap="off" placeholder="Type Markdown here..."></textarea>
+    </div>
+  </div>
+  <div id="divider"></div>
+  <div id="previewPane">
+    <div id="slideWrap"></div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<input type="file" id="importInput" accept=".md,.markdown,.txt,.bib" style="display:none">
+<input type="file" id="imgInput" accept="image/*" multiple style="display:none">
+
+<script>
+(function () {
+  'use strict';
+
+  /* localStorage may be unavailable (data: URLs, private mode) — wrap safely */
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  var HINT = 'Use --- to split slides';
+  var statusEl = document.getElementById('status');
+  var statusTimer = null;
+  function flash(msg) {
+    statusEl.textContent = msg;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(function () { statusEl.textContent = HINT; }, 3000);
+  }
+
+  /* ---------- Local images: name -> object/data URL ---------- */
+  var imageMap = {};
+  var IMG_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
+  function resolveSrc(src) {
+    if (/^(https?:|data:|blob:|file:)/.test(src)) return src;
+    var key = src.replace(/^\.\//, '');
+    try { key = decodeURIComponent(key); } catch (e) {}
+    return imageMap[key] || imageMap[key.split('/').pop()] || src;
+  }
+
+  /* ---------- BibTeX & citations ---------- */
+  var fileBib = {};        // entries loaded from .bib files
+  var docBib = {};         // entries from ```bibtex fences in the document
+  var citeStyle = 'numeric';
+  var citedOrder = [];     // keys in first-citation order (rebuilt every render)
+  var citedIndex = {};     // key -> citation number
+
+  function getBib(key) { return docBib[key] || fileBib[key] || null; }
+
+  function cleanTex(s) {
+    return s
+      .replace(/\\["'`^~=.]/g, '')
+      .replace(/\\[a-zA-Z]+\s*/g, '')
+      .replace(/[{}]/g, '')
+      .replace(/\\([&%$_#])/g, '$1')
+      .replace(/~/g, ' ')
+      .replace(/---?/g, '–')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function parseBib(text) {
+    var entries = {};
+    var re = /@(\w+)\s*\{\s*([^,\s{}]+)\s*,/g, m;
+    while ((m = re.exec(text))) {
+      var type = m[1].toLowerCase();
+      if (type === 'comment' || type === 'preamble' || type === 'string') continue;
+      // capture the balanced entry body
+      var i = re.lastIndex, depth = 1, start = i;
+      while (i < text.length && depth > 0) {
+        if (text[i] === '{') depth++;
+        else if (text[i] === '}') depth--;
+        i++;
+      }
+      entries[m[2]] = parseBibFields(text.slice(start, i - 1), type, m[2]);
+      re.lastIndex = i;
+    }
+    return entries;
+  }
+
+  function parseBibFields(body, type, key) {
+    var e = { type: type, key: key };
+    var fre = /(\w+)\s*=\s*/g, fm;
+    while ((fm = fre.exec(body))) {
+      var i = fre.lastIndex, val = '', ch = body[i];
+      if (ch === '{') {
+        var depth = 1; i++;
+        while (i < body.length && depth > 0) {
+          if (body[i] === '{') depth++;
+          else if (body[i] === '}') depth--;
+          if (depth > 0) val += body[i];
+          i++;
+        }
+      } else if (ch === '"') {
+        i++;
+        while (i < body.length && body[i] !== '"') { val += body[i]; i++; }
+        i++;
+      } else {
+        while (i < body.length && body[i] !== ',' && body[i] !== '\n') { val += body[i]; i++; }
+      }
+      e[fm[1].toLowerCase()] = cleanTex(val);
+      fre.lastIndex = i;
+    }
+    return e;
+  }
+
+  function lastNames(e) {
+    var a = e.author || e.editor || '';
+    return a.split(/\s+and\s+/i).map(function (n) {
+      n = n.trim();
+      if (!n) return '';
+      if (n.indexOf(',') >= 0) return n.split(',')[0].trim();
+      var parts = n.split(/\s+/);
+      return parts[parts.length - 1];
+    }).filter(Boolean);
+  }
+
+  function inTextAuthors(e) {
+    var L = lastNames(e);
+    if (!L.length) return e.key;
+    if (L.length === 1) return L[0];
+    if (L.length === 2) return L[0] + ' & ' + L[1];
+    return L[0] + ' et al.';
+  }
+
+  function fullAuthors(e) {
+    var a = e.author || e.editor || '';
+    return a.split(/\s+and\s+/i).map(function (n) {
+      n = n.trim();
+      if (n.indexOf(',') >= 0) {
+        var p = n.split(',');
+        return (p[1] || '').trim() + ' ' + p[0].trim();
+      }
+      return n;
+    }).filter(Boolean).join(', ');
+  }
+
+  function citeNumber(key) {
+    if (!(key in citedIndex)) {
+      citedOrder.push(key);
+      citedIndex[key] = citedOrder.length;
+    }
+    return citedIndex[key];
+  }
+
+  function renderCitation(keys) {
+    if (citeStyle === 'numeric') {
+      var nums = [], missing = [];
+      keys.forEach(function (k) {
+        if (getBib(k)) nums.push(citeNumber(k));
+        else missing.push('<span class="cite-missing">?' + escapeHtml(k) + '</span>');
+      });
+      nums.sort(function (a, b) { return a - b; });
+      var parts = nums.concat(missing);
+      return parts.length ? '[' + parts.join(', ') + ']' : '';
+    }
+    var frags = keys.map(function (k) {
+      var e = getBib(k);
+      if (!e) return '<span class="cite-missing">?' + escapeHtml(k) + '</span>';
+      citeNumber(k); // record for the reference list
+      return escapeHtml(inTextAuthors(e)) + ', ' + escapeHtml(e.year || 'n.d.');
+    });
+    return '(' + frags.join('; ') + ')';
+  }
+
+  function formatRef(e) {
+    var out = [];
+    var authors = fullAuthors(e);
+    if (authors) out.push(escapeHtml(authors));
+    if (e.year) out.push('(' + escapeHtml(e.year) + ')');
+    var head = out.join(' ');
+    var bits = [head ? head + '.' : ''];
+    if (e.title) bits.push(escapeHtml(e.title) + '.');
+    var venue = e.journal || e.booktitle || e.publisher || e.school || e.institution || e.howpublished || '';
+    if (venue) {
+      var v = '<span class="venue">' + escapeHtml(venue) + '</span>';
+      if (e.volume) {
+        v += ', ' + escapeHtml(e.volume);
+        if (e.number) v += '(' + escapeHtml(e.number) + ')';
+      }
+      if (e.pages) v += ', ' + escapeHtml(e.pages);
+      bits.push(v + '.');
+    }
+    if (e.doi) bits.push('doi:' + escapeHtml(e.doi));
+    return bits.filter(Boolean).join(' ');
+  }
+
+  var REFS_PLACEHOLDER = '<div data-refs="1"></div>';
+  var REFS_EMPTY = '<p><em style="opacity:.5">No citations yet — cite with [@key]</em></p>';
+
+  // formatted reference strings in display order (citation order or alphabetical)
+  function referenceItems() {
+    var keys = citedOrder.filter(function (k) { return getBib(k); });
+    if (citeStyle !== 'numeric') {
+      keys = keys.slice().sort(function (a, b) {
+        var ea = getBib(a), eb = getBib(b);
+        var ka = (lastNames(ea)[0] || '') + (ea.year || '');
+        var kb = (lastNames(eb)[0] || '') + (eb.year || '');
+        return ka.localeCompare(kb);
+      });
+    }
+    return keys.map(function (k) { return formatRef(getBib(k)); });
+  }
+
+  function refsListHtml(items, startNum) {
+    var lis = items.map(function (it) { return '<li>' + it + '</li>'; }).join('');
+    if (citeStyle === 'numeric') {
+      return '<ol class="refs" start="' + startNum + '">' + lis + '</ol>';
+    }
+    return '<ul class="refs" style="list-style:none;padding-left:0">' + lis + '</ul>';
+  }
+
+  /* Offscreen measurer for overflow pagination */
+  var measurer = null;
+  function slideOverflows(html) {
+    if (!measurer) {
+      measurer = document.createElement('div');
+      measurer.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;';
+      document.body.appendChild(measurer);
+    }
+    measurer.innerHTML = '';
+    var el = document.createElement('div');
+    el.className = 'slide ' + theme;
+    el.innerHTML = html;
+    measurer.appendChild(el);
+    var over = el.scrollHeight > el.clientHeight + 1;
+    measurer.innerHTML = '';
+    return over;
+  }
+
+  // expand a slide containing [references] into as many slides as needed
+  function paginateRefsSlide(template) {
+    var items = referenceItems();
+    if (!items.length) return [template.split(REFS_PLACEHOLDER).join(REFS_EMPTY)];
+    var pages = [], chunk = [], startNum = 1;
+    for (var i = 0; i < items.length; i++) {
+      chunk.push(items[i]);
+      var candidate = template.split(REFS_PLACEHOLDER).join(refsListHtml(chunk, startNum));
+      if (chunk.length > 1 && slideOverflows(candidate)) {
+        chunk.pop();
+        pages.push(template.split(REFS_PLACEHOLDER).join(refsListHtml(chunk, startNum)));
+        startNum += chunk.length;
+        chunk = [items[i]];
+      }
+    }
+    pages.push(template.split(REFS_PLACEHOLDER).join(refsListHtml(chunk, startNum)));
+    return pages;
+  }
+
+  function loadBibText(text, sourceName) {
+    var entries = parseBib(text);
+    var n = 0, k;
+    for (k in entries) { fileBib[k] = entries[k]; n++; }
+    flash('Loaded ' + n + ' reference' + (n === 1 ? '' : 's') + ' from ' + sourceName);
+    return n;
+  }
+
+  /* ---------- Minimal Markdown parser ---------- */
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function inline(s) {
+    s = escapeHtml(s);
+    // handle inline code first to protect its content
+    var codes = [];
+    s = s.replace(/`([^`]+)`/g, function (_, c) {
+      codes.push(c);
+      return '\u0001C' + (codes.length - 1) + 'C\u0001';
+    });
+    // citations: [@key] or [@key1; @key2]
+    s = s.replace(/\[(@[^\]]+)\]/g, function (full, inner) {
+      if (!/^@[^;\s]+(\s*;\s*@[^;\s]+)*$/.test(inner.trim())) return full;
+      var keys = inner.split(';').map(function (k) { return k.trim().replace(/^@/, ''); }).filter(Boolean);
+      return renderCitation(keys);
+    });
+    s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (_, alt, src) {
+      return '<img src="' + resolveSrc(src) + '" alt="' + alt + '">';
+    });
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    s = s.replace(/\u0001C(\d+)C\u0001/g, function (_, i) {
+      return '<code>' + codes[+i] + '</code>';
+    });
+    return s;
+  }
+
+  /* ---------- Mind map renderer (```mindmap fenced block) ---------- */
+  var MM_COLORS = ['#4f8cff', '#ef7d7d', '#5cb887', '#c48fd6', '#e8a75d', '#54c2bd', '#8d9fe8'];
+  var mmCanvas = document.createElement('canvas');
+  var mmCtx = mmCanvas.getContext('2d');
+  var MM_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif';
+
+  function renderMindmap(lines) {
+    // parse indented "- item" lines into a tree
+    var roots = [], stack = [];
+    for (var i = 0; i < lines.length; i++) {
+      var m = lines[i].match(/^(\s*)[-*+]\s+(.*)$/);
+      if (!m) continue;
+      var depth = Math.floor(m[1].replace(/\t/g, '  ').length / 2);
+      var node = { text: m[2].trim(), children: [], depth: depth };
+      while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+      if (stack.length) stack[stack.length - 1].children.push(node);
+      else roots.push(node);
+      stack.push(node);
+    }
+    if (!roots.length) return '<p><em>empty mindmap</em></p>';
+    var root = roots.length === 1 ? roots[0] : { text: 'Mind Map', children: roots };
+
+    var GAP_X = 48, GAP_Y = 12, PAD_X = 15;
+
+    function measure(text, size) {
+      mmCtx.font = '600 ' + size + 'px ' + MM_FONT;
+      return mmCtx.measureText(text).width;
+    }
+    function layout(node, level) {
+      node.fs = level === 0 ? 19 : (level === 1 ? 16 : 14);
+      node.h = level === 0 ? 46 : (level === 1 ? 36 : 30);
+      node.w = Math.ceil(measure(node.text, node.fs)) + PAD_X * 2;
+      var total = 0;
+      node.children.forEach(function (c) { layout(c, level + 1); total += c.subH; });
+      total += GAP_Y * Math.max(0, node.children.length - 1);
+      node.subH = Math.max(node.h, total);
+    }
+    function place(node, x, top) {
+      node.x = x;
+      node.y = top + node.subH / 2 - node.h / 2;
+      var childrenTotal = node.children.reduce(function (a, c) { return a + c.subH; }, 0) +
+                          GAP_Y * Math.max(0, node.children.length - 1);
+      var cy = top + (node.subH - childrenTotal) / 2;
+      node.children.forEach(function (c) {
+        place(c, x + node.w + GAP_X, cy);
+        cy += c.subH + GAP_Y;
+      });
+    }
+    layout(root, 0);
+    place(root, 4, 4);
+
+    var maxX = 0, maxY = 0;
+    var shapes = [], links = [];
+    function draw(node, color, level) {
+      maxX = Math.max(maxX, node.x + node.w);
+      maxY = Math.max(maxY, node.y + node.h);
+      var fill = level === 0 ? '#3d4351' : color;
+      shapes.push('<rect x="' + node.x + '" y="' + node.y + '" width="' + node.w +
+        '" height="' + node.h + '" rx="' + node.h / 2 + '" fill="' + fill + '"/>');
+      shapes.push('<text x="' + (node.x + node.w / 2) + '" y="' + (node.y + node.h / 2 + 1) +
+        '" text-anchor="middle" dominant-baseline="central" font-size="' + node.fs +
+        '" font-weight="600" fill="#ffffff">' + escapeHtml(node.text) + '</text>');
+      node.children.forEach(function (c, idx) {
+        var cColor = level === 0 ? MM_COLORS[idx % MM_COLORS.length] : color;
+        var x1 = node.x + node.w, y1 = node.y + node.h / 2;
+        var x2 = c.x, y2 = c.y + c.h / 2;
+        var mx = (x1 + x2) / 2;
+        links.push('<path d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 +
+          ' ' + x2 + ' ' + y2 + '" fill="none" stroke="' + cColor + '" stroke-width="2.4"/>');
+        draw(c, cColor, level + 1);
+      });
+    }
+    draw(root, MM_COLORS[0], 0);
+
+    var W = Math.ceil(maxX + 4), H = Math.ceil(maxY + 4);
+    return '<div class="mindmap"><svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W +
+      '" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif">' +
+      links.join('') + shapes.join('') + '</svg></div>';
+  }
+
+  function parseBlocks(lines) {
+    var html = [], i = 0;
+    while (i < lines.length) {
+      var line = lines[i];
+
+      if (/^\s*$/.test(line)) { i++; continue; }
+
+      // fenced block (code or mindmap)
+      var fence = line.match(/^```(\w*)\s*$/);
+      if (fence) {
+        var buf = [];
+        i++;
+        while (i < lines.length && !/^```\s*$/.test(lines[i])) { buf.push(lines[i]); i++; }
+        i++; // skip closing ```
+        if (fence[1] === 'mindmap') {
+          html.push(renderMindmap(buf));
+        } else if (fence[1] === 'bibtex' || fence[1] === 'bib') {
+          // bibliography data — parsed in render(), nothing to display
+        } else {
+          var codeLines = buf.map(function (l) {
+            return '<span class="cl">' + escapeHtml(l) + '</span>';
+          }).join('');
+          html.push('<pre><code class="numbered">' + codeLines + '</code></pre>');
+        }
+        continue;
+      }
+
+      // [references] on its own line expands into the bibliography
+      if (/^\[references\]\s*$/i.test(line)) {
+        html.push(REFS_PLACEHOLDER);
+        i++;
+        continue;
+      }
+
+      // heading
+      var h = line.match(/^(#{1,6})\s+(.*)$/);
+      if (h) {
+        var lv = Math.min(h[1].length, 6);
+        html.push('<h' + lv + '>' + inline(h[2]) + '</h' + lv + '>');
+        i++;
+        continue;
+      }
+
+      // blockquote
+      if (/^>\s?/.test(line)) {
+        var qbuf = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) {
+          qbuf.push(lines[i].replace(/^>\s?/, ''));
+          i++;
+        }
+        html.push('<blockquote><p>' + qbuf.map(inline).join('<br>') + '</p></blockquote>');
+        continue;
+      }
+
+      // unordered list
+      if (/^\s*[-*+]\s+/.test(line)) {
+        var ubuf = [];
+        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+          ubuf.push('<li>' + inline(lines[i].replace(/^\s*[-*+]\s+/, '')) + '</li>');
+          i++;
+        }
+        html.push('<ul>' + ubuf.join('') + '</ul>');
+        continue;
+      }
+
+      // ordered list
+      if (/^\s*\d+\.\s+/.test(line)) {
+        var obuf = [];
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+          obuf.push('<li>' + inline(lines[i].replace(/^\s*\d+\.\s+/, '')) + '</li>');
+          i++;
+        }
+        html.push('<ol>' + obuf.join('') + '</ol>');
+        continue;
+      }
+
+      // table
+      if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+        var headCells = line.split('|').slice(1, -1).map(function (c) { return '<th>' + inline(c.trim()) + '</th>'; });
+        i += 2;
+        var rows = [];
+        while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) {
+          var cells = lines[i].split('|').slice(1, -1).map(function (c) { return '<td>' + inline(c.trim()) + '</td>'; });
+          rows.push('<tr>' + cells.join('') + '</tr>');
+          i++;
+        }
+        html.push('<table><thead><tr>' + headCells.join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>');
+        continue;
+      }
+
+      // paragraph (merge consecutive lines)
+      var pbuf = [line];
+      i++;
+      while (i < lines.length && !/^\s*$/.test(lines[i]) &&
+             !/^(#{1,6}\s|```|>\s?|\s*[-*+]\s+|\s*\d+\.\s+|\|)/.test(lines[i])) {
+        pbuf.push(lines[i]);
+        i++;
+      }
+      html.push('<p>' + pbuf.map(inline).join('<br>') + '</p>');
+    }
+    return html.join('\n');
+  }
+
+  // parse one slide's lines, honoring ||| column separators;
+  // leading headings before the first ||| stay full-width above the columns
+  function parseSlide(lines) {
+    var segs = [[]], ratios = [1], inFence = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^```/.test(lines[i])) inFence = !inFence;
+      var m = !inFence && lines[i].match(/^\|\|\|\s*([\d.]+)?\s*$/);
+      if (m) {
+        segs.push([]);
+        ratios.push(m[1] ? parseFloat(m[1]) || 1 : 1);
+      } else {
+        segs[segs.length - 1].push(lines[i]);
+      }
+    }
+    if (segs.length === 1) return parseBlocks(lines);
+
+    var first = segs[0], k = 0, headerEnd = 0;
+    while (k < first.length) {
+      if (/^\s*$/.test(first[k])) { k++; continue; }
+      if (/^#{1,6}\s/.test(first[k])) { k++; headerEnd = k; continue; }
+      break;
+    }
+    var headerHtml = headerEnd ? parseBlocks(first.slice(0, headerEnd)) : '';
+    segs[0] = first.slice(headerEnd);
+    var cols = segs.map(function (sg, idx) {
+      return '<div class="col" style="flex:' + ratios[idx] + '">' + parseBlocks(sg) + '</div>';
+    }).join('');
+    return headerHtml + '<div class="cols">' + cols + '</div>';
+  }
+
+  // split the document into slides on --- (ignoring --- inside code fences)
+  function splitSlides(md) {
+    var lines = md.replace(/\r\n?/g, '\n').split('\n');
+    var slides = [], cur = [], inFence = false;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^```/.test(lines[i])) inFence = !inFence;
+      if (!inFence && /^(---|\*\*\*|___)\s*$/.test(lines[i])) {
+        slides.push(cur); cur = [];
+      } else {
+        cur.push(lines[i]);
+      }
+    }
+    slides.push(cur);
+    return slides.filter(function (s) {
+      return s.some(function (l) { return !/^\s*$/.test(l); });
+    });
+  }
+
+  /* ---------- App state ---------- */
+  var editor = document.getElementById('editor');
+  var slideWrap = document.getElementById('slideWrap');
+  var previewPane = document.getElementById('previewPane');
+  var printArea = document.getElementById('printArea');
+  var themeSelect = document.getElementById('themeSelect');
+  var counter = document.getElementById('slideCounter');
+  var fileNameEl = document.getElementById('fileName');
+  var sidebar = document.getElementById('sidebar');
+  var fileListEl = document.getElementById('fileList');
+
+  var slidesHtml = [];
+  var current = 0;
+  var theme = store.get('mdslide-theme') || 'theme-clean';
+  themeSelect.value = theme;
+
+  var dirHandle = null;     // project folder handle
+  var fileHandle = null;    // currently open .md file handle
+  var loadedName = null;    // display name of the open file
+  var dirty = false;
+
+  var hasFS = 'showDirectoryPicker' in window;
+
+  var SAMPLE = [
+    '# MD Slide',
+    '',
+    'A lightweight **Markdown → Slides** tool',
+    '',
+    'Edit on the left, preview live on the right',
+    '',
+    '---',
+    '',
+    '## How to Use',
+    '',
+    '- Put `---` on its own line to start a new slide',
+    '- Supports **bold**, *italic*, ~~strikethrough~~, `inline code`',
+    '- Supports [links](https://example.com) and images',
+    '- Open a local folder as a **Project** to browse, save and load files',
+    '- Click "Download PDF" to export',
+    '',
+    '---',
+    '',
+    '## Code & Quotes',
+    '',
+    '```python',
+    'def hello(name):',
+    '    print(f"Hello, {name}!")',
+    '',
+    'hello("world")',
+    '```',
+    '',
+    '> Simplicity is harder than complexity.',
+    '',
+    '---',
+    '',
+    '## Two Columns',
+    '',
+    'Split any slide with `|||` on its own line —',
+    'text on the left, an image or code on the right.',
+    '',
+    'Any block works in a column: images, tables,',
+    'mind maps, quotes…',
+    '',
+    '|||',
+    '',
+    '```python',
+    '# right column',
+    'layout = split(slide, "|||")',
+    'render(layout)',
+    '```',
+    '',
+    '---',
+    '',
+    '## Column Tips',
+    '',
+    '- Headings above the first `|||` stay full-width',
+    '- Use `||| 2` to make the next column twice as wide',
+    '- Works with images: `![figure](figure.png)`',
+    '',
+    '> Note: `|||` is custom syntax of this tool — standard Markdown has',
+    '> no column syntax (Marp etc. invent their own), so other renderers',
+    '> will show `|||` as plain text.',
+    '',
+    '---',
+    '',
+    '## Mind Map',
+    '',
+    'Draw one with a `mindmap` fenced code block:',
+    '',
+    '```mindmap',
+    '- MD Slide',
+    '  - Editing',
+    '    - Live preview',
+    '    - Cursor sync',
+    '  - Export',
+    '    - PDF',
+    '  - Project',
+    '    - Local folder',
+    '    - Save / import',
+    '    - Local images',
+    '```',
+    '',
+    '---',
+    '',
+    '## Citations',
+    '',
+    'Transformers changed everything [@vaswani2017], and pre-training',
+    'made them practical [@vaswani2017; @devlin2019].',
+    '',
+    'Cite with `[@key]`, switch style in the toolbar, and load a `.bib`',
+    'from your project folder — or embed one in a `bibtex` code block',
+    '(this deck does; it renders as nothing).',
+    '',
+    '```bibtex',
+    '@inproceedings{vaswani2017,',
+    '  author    = {Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit},',
+    '  title     = {Attention Is All You Need},',
+    '  booktitle = {Advances in Neural Information Processing Systems},',
+    '  year      = {2017},',
+    '  pages     = {5998--6008}',
+    '}',
+    '@inproceedings{devlin2019,',
+    '  author    = {Jacob Devlin and Ming-Wei Chang and Kenton Lee and Kristina Toutanova},',
+    '  title     = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},',
+    '  booktitle = {Proceedings of NAACL-HLT},',
+    '  year      = {2019}',
+    '}',
+    '```',
+    '',
+    '---',
+    '',
+    '## References',
+    '',
+    '[references]',
+    '',
+    '---',
+    '',
+    '## Tables',
+    '',
+    '| Feature | Status |',
+    '| --- | --- |',
+    '| Live preview | ✅ |',
+    '| Mind maps | ✅ |',
+    '| Citations & .bib | ✅ |',
+    '| PDF export | ✅ |',
+    '| Cross-platform | ✅ Windows / macOS |',
+    '',
+    '---',
+    '',
+    '# Thanks!',
+    '',
+    'Start editing on the left and build your own deck 🚀'
+  ].join('\n');
+
+  editor.value = store.get('mdslide-content-v2') || SAMPLE;
+
+  function setFileLabel() {
+    fileNameEl.textContent = loadedName || 'unsaved draft';
+    fileNameEl.classList.toggle('dirty', dirty);
+  }
+
+  /* ---------- Rendering ---------- */
+  function buildSlideEl(html, idx, total, isTitle) {
+    var el = document.createElement('div');
+    el.className = 'slide ' + theme + (isTitle ? ' is-title' : '');
+    el.innerHTML = html + '<div class="page-num">' + (idx + 1) + ' / ' + total + '</div>';
+    return el;
+  }
+
+  // a slide with an h1 and no lists/code/tables is treated as a centered title slide
+  function isTitleSlide(html) {
+    return /<h1>/.test(html) && !/<(ul|ol|pre|table|div class="(mindmap|cols)")/.test(html);
+  }
+
+  function render() {
+    updateGutter();
+    // collect ```bibtex fences anywhere in the document first
+    docBib = {};
+    var fenceRe = /^```(?:bibtex|bib)[ \t]*\r?\n([\s\S]*?)^```[ \t]*$/gmi;
+    var fm;
+    while ((fm = fenceRe.exec(editor.value))) {
+      var entries = parseBib(fm[1]);
+      for (var k in entries) docBib[k] = entries[k];
+    }
+    citedOrder = [];
+    citedIndex = {};
+
+    var slides = splitSlides(editor.value);
+    slidesHtml = slides.map(function (s) { return parseSlide(s); });
+
+    // expand [references] placeholders now that every citation is numbered,
+    // splitting overflowing reference lists across multiple slides
+    var expanded = [];
+    slidesHtml.forEach(function (h) {
+      if (h.indexOf(REFS_PLACEHOLDER) < 0) expanded.push(h);
+      else expanded.push.apply(expanded, paginateRefsSlide(h));
+    });
+    slidesHtml = expanded;
+
+    if (slidesHtml.length === 0) slidesHtml = ['<h2 style="opacity:.4">Empty slide</h2>'];
+    if (current >= slidesHtml.length) current = slidesHtml.length - 1;
+    showSlide();
+  }
+
+  function showSlide() {
+    slideWrap.innerHTML = '';
+    var html = slidesHtml[current];
+    slideWrap.appendChild(buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html)));
+    counter.textContent = (current + 1) + ' / ' + slidesHtml.length;
+    fit();
+  }
+
+  function fit() {
+    var pw = previewPane.clientWidth - 40;
+    var ph = previewPane.clientHeight - 40;
+    var scale = Math.min(pw / 960, ph / 540, 1.4);
+    slideWrap.style.transform = 'scale(' + scale + ')';
+    slideWrap.style.width = '960px';
+    slideWrap.style.height = '540px';
+  }
+
+  /* ---------- Editor sync: preview follows the cursor ---------- */
+  function slideIndexAtCursor() {
+    var before = editor.value.slice(0, editor.selectionStart);
+    var lines = before.split('\n');
+    var idx = 0, inFence = false;
+    for (var i = 0; i < lines.length - 1; i++) {
+      if (/^```/.test(lines[i])) inFence = !inFence;
+      if (!inFence && /^(---|\*\*\*|___)\s*$/.test(lines[i])) idx++;
+    }
+    return idx;
+  }
+
+  function onEdit() {
+    store.set('mdslide-content-v2', editor.value);
+    if (!dirty) { dirty = true; setFileLabel(); }
+    current = Math.min(slideIndexAtCursor(), Math.max(0, splitSlides(editor.value).length - 1));
+    render();
+  }
+
+  /* ---------- Line-number gutter ---------- */
+  var gutter = document.getElementById('gutter');
+  var gutterLines = 0;
+  function updateGutter() {
+    var n = editor.value.split('\n').length;
+    if (n !== gutterLines) {
+      gutterLines = n;
+      var nums = new Array(n);
+      for (var i = 0; i < n; i++) nums[i] = i + 1;
+      gutter.textContent = nums.join('\n');
+      gutter.style.minWidth = (String(n).length + 1.5) + 'ch';
+    }
+    gutter.scrollTop = editor.scrollTop;
+  }
+  editor.addEventListener('scroll', function () { gutter.scrollTop = editor.scrollTop; });
+
+  editor.addEventListener('input', onEdit);
+  editor.addEventListener('click', function () {
+    var idx = slideIndexAtCursor();
+    if (idx !== current && idx < slidesHtml.length) { current = idx; showSlide(); }
+  });
+  editor.addEventListener('keyup', function (e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) {
+      var idx = slideIndexAtCursor();
+      if (idx !== current && idx < slidesHtml.length) { current = idx; showSlide(); }
+    }
+  });
+
+  function insertAtCursor(text) {
+    var s = editor.selectionStart, e = editor.selectionEnd;
+    editor.value = editor.value.slice(0, s) + text + editor.value.slice(e);
+    editor.selectionStart = editor.selectionEnd = s + text.length;
+    editor.focus();
+    onEdit();
+  }
+
+  /* ---------- Navigation ---------- */
+  function go(delta) {
+    var n = current + delta;
+    if (n < 0 || n >= slidesHtml.length) return;
+    current = n;
+    showSlide();
+  }
+  document.getElementById('prevBtn').addEventListener('click', function () { go(-1); });
+  document.getElementById('nextBtn').addEventListener('click', function () { go(1); });
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveFile();
+      return;
+    }
+    if (document.activeElement === editor) return;
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(-1);
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') go(1);
+  });
+
+  /* ---------- Theme ---------- */
+  themeSelect.addEventListener('change', function () {
+    theme = themeSelect.value;
+    store.set('mdslide-theme', theme);
+    render(); // full re-render: reference pagination depends on the theme's fonts
+  });
+
+  /* ---------- Citation style ---------- */
+  var citeSelect = document.getElementById('citeSelect');
+  citeStyle = store.get('mdslide-cite') || 'numeric';
+  citeSelect.value = citeStyle;
+  citeSelect.addEventListener('change', function () {
+    citeStyle = citeSelect.value;
+    store.set('mdslide-cite', citeStyle);
+    render();
+  });
+
+  /* ---------- Project folder (File System Access API) ---------- */
+  async function openFolder() {
+    if (!hasFS) {
+      flash('Folder access needs Chrome or Edge — use Import/Save instead');
+      return;
+    }
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    } catch (e) { return; } // user cancelled
+    sidebar.classList.add('open');
+    await refreshFileList();
+    flash('Project opened: ' + dirHandle.name);
+  }
+
+  async function scanDir(handle, path, depth, rows) {
+    var dirs = [], files = [];
+    try {
+      for await (var entry of handle.values()) {
+        if (entry.name.charAt(0) === '.') continue;
+        (entry.kind === 'directory' ? dirs : files).push(entry);
+      }
+    } catch (e) { return; }
+    var byName = function (a, b) { return a.name.localeCompare(b.name); };
+    dirs.sort(byName); files.sort(byName);
+    for (var f = 0; f < files.length; f++) {
+      var fe = files[f];
+      var rel = path + fe.name;
+      rows.push({ kind: 'file', name: fe.name, rel: rel, handle: fe, depth: depth });
+      if (IMG_EXT.test(fe.name)) {
+        try {
+          var file = await fe.getFile();
+          var url = URL.createObjectURL(file);
+          imageMap[rel] = url;
+          imageMap[fe.name] = imageMap[fe.name] || url;
+        } catch (e) {}
+      } else if (/\.bib$/i.test(fe.name)) {
+        try {
+          var bibText = await (await fe.getFile()).text();
+          var entries = parseBib(bibText);
+          for (var bk in entries) fileBib[bk] = entries[bk];
+        } catch (e) {}
+      }
+    }
+    for (var d = 0; d < dirs.length; d++) {
+      rows.push({ kind: 'dir', name: dirs[d].name, rel: path + dirs[d].name, depth: depth });
+      if (depth < 2) await scanDir(dirs[d], path + dirs[d].name + '/', depth + 1, rows);
+    }
+  }
+
+  async function refreshFileList() {
+    if (!dirHandle) return;
+    // revoke old object URLs before re-scanning
+    Object.keys(imageMap).forEach(function (k) {
+      if (/^blob:/.test(imageMap[k])) URL.revokeObjectURL(imageMap[k]);
+    });
+    imageMap = {};
+    fileBib = {};
+    var rows = [];
+    await scanDir(dirHandle, '', 0, rows);
+    var bibCount = Object.keys(fileBib).length;
+    if (bibCount) flash('Project: ' + bibCount + ' bib entr' + (bibCount === 1 ? 'y' : 'ies') + ' loaded');
+    fileListEl.innerHTML = '';
+    rows.forEach(function (r) {
+      var div = document.createElement('div');
+      var isMd = /\.(md|markdown|txt)$/i.test(r.name);
+      var isImg = IMG_EXT.test(r.name);
+      var isBib = /\.bib$/i.test(r.name);
+      div.className = 'file-row ' + (r.kind === 'dir' ? 'dir' : (isMd || isImg || isBib ? '' : 'muted'));
+      div.style.paddingLeft = (12 + r.depth * 14) + 'px';
+      div.innerHTML = '<span class="icon">' +
+        (r.kind === 'dir' ? '&#128193;' : (isImg ? '&#128444;' : (isMd ? '&#128221;' : (isBib ? '&#128218;' : '&#128196;')))) +
+        '</span>' + escapeHtml(r.name);
+      div.title = r.rel;
+      if (r.kind === 'file' && isMd) {
+        div.addEventListener('click', function () { openMdFile(r.handle, r.rel, div); });
+        if (r.rel === loadedName) div.classList.add('active');
+      } else if (r.kind === 'file' && isImg) {
+        div.addEventListener('click', function () {
+          insertAtCursor('![' + r.name + '](' + r.rel + ')');
+          flash('Image reference inserted');
+        });
+      } else if (r.kind === 'file' && isBib) {
+        div.addEventListener('click', async function () {
+          try {
+            loadBibText(await (await r.handle.getFile()).text(), r.name);
+            render();
+          } catch (e) { flash('Could not read ' + r.name); }
+        });
+      }
+      fileListEl.appendChild(div);
+    });
+    render(); // image URLs may have changed
+  }
+
+  async function openMdFile(handle, rel, rowEl) {
+    try {
+      var file = await handle.getFile();
+      var text = await file.text();
+      fileHandle = handle;
+      loadedName = rel;
+      dirty = false;
+      editor.value = text;
+      store.set('mdslide-content-v2', text);
+      current = 0;
+      setFileLabel();
+      render();
+      var rowsEls = fileListEl.querySelectorAll('.file-row');
+      for (var i = 0; i < rowsEls.length; i++) rowsEls[i].classList.remove('active');
+      if (rowEl) rowEl.classList.add('active');
+      flash('Opened ' + rel);
+    } catch (e) {
+      flash('Could not open file');
+    }
+  }
+
+  document.getElementById('folderBtn').addEventListener('click', openFolder);
+  document.getElementById('refreshBtn').addEventListener('click', refreshFileList);
+  document.getElementById('closeSidebarBtn').addEventListener('click', function () {
+    sidebar.classList.remove('open');
+    dirHandle = null;
+  });
+
+  /* ---------- Save / Import ---------- */
+  async function writeToHandle(handle, text) {
+    var w = await handle.createWritable();
+    await w.write(text);
+    await w.close();
+  }
+
+  async function saveFile() {
+    var text = editor.value;
+    try {
+      if (fileHandle) {
+        await writeToHandle(fileHandle, text);
+      } else if (dirHandle) {
+        var name = prompt('File name for this deck:', 'slides.md');
+        if (!name) return;
+        if (!/\.(md|markdown|txt)$/i.test(name)) name += '.md';
+        fileHandle = await dirHandle.getFileHandle(name, { create: true });
+        loadedName = name;
+        await writeToHandle(fileHandle, text);
+        await refreshFileList();
+      } else if ('showSaveFilePicker' in window) {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: 'slides.md',
+          types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }]
+        });
+        loadedName = fileHandle.name;
+        await writeToHandle(fileHandle, text);
+      } else {
+        // fallback: download the file
+        var blob = new Blob([text], { type: 'text/markdown' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = loadedName || 'slides.md';
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+        flash('Downloaded ' + a.download);
+        return;
+      }
+      dirty = false;
+      setFileLabel();
+      flash('Saved ✓');
+    } catch (e) {
+      if (e && e.name !== 'AbortError') flash('Save failed: ' + e.message);
+    }
+  }
+  document.getElementById('saveBtn').addEventListener('click', saveFile);
+
+  var importInput = document.getElementById('importInput');
+  document.getElementById('importBtn').addEventListener('click', async function () {
+    if ('showOpenFilePicker' in window) {
+      try {
+        var handles = await window.showOpenFilePicker({
+          types: [{
+            description: 'Markdown / BibTeX',
+            accept: { 'text/markdown': ['.md', '.markdown', '.txt'], 'text/x-bibtex': ['.bib'] }
+          }]
+        });
+        var h = handles[0];
+        if (/\.bib$/i.test(h.name)) {
+          loadBibText(await (await h.getFile()).text(), h.name);
+          render();
+        } else {
+          await openMdFile(h, h.name, null);
+        }
+      } catch (e) { /* cancelled */ }
+    } else {
+      importInput.click();
+    }
+  });
+  importInput.addEventListener('change', function () {
+    var f = importInput.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (/\.bib$/i.test(f.name)) {
+        loadBibText(reader.result, f.name);
+        render();
+        importInput.value = '';
+        return;
+      }
+      fileHandle = null;
+      loadedName = f.name;
+      dirty = false;
+      editor.value = reader.result;
+      store.set('mdslide-content-v2', reader.result);
+      current = 0;
+      setFileLabel();
+      render();
+      flash('Imported ' + f.name);
+    };
+    reader.readAsText(f);
+    importInput.value = '';
+  });
+
+  /* ---------- Insert local images ---------- */
+  async function registerAndInsert(file) {
+    var name = file.name;
+    // copy the image into the project folder so the reference survives reloads
+    if (dirHandle) {
+      try {
+        var target = await dirHandle.getFileHandle(name, { create: true });
+        var w = await target.createWritable();
+        await w.write(file);
+        await w.close();
+      } catch (e) {}
+    }
+    imageMap[name] = URL.createObjectURL(file);
+    insertAtCursor('![' + name + '](' + name + ')\n');
+  }
+
+  var imgInput = document.getElementById('imgInput');
+  document.getElementById('imageBtn').addEventListener('click', async function () {
+    if ('showOpenFilePicker' in window) {
+      try {
+        var handles = await window.showOpenFilePicker({
+          multiple: true,
+          types: [{ description: 'Images', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.avif'] } }]
+        });
+        for (var i = 0; i < handles.length; i++) {
+          await registerAndInsert(await handles[i].getFile());
+        }
+        flash(dirHandle ? 'Image copied into project' : 'Image inserted (session only — open a Project to keep it)');
+      } catch (e) { /* cancelled */ }
+    } else {
+      imgInput.click();
+    }
+  });
+  imgInput.addEventListener('change', async function () {
+    for (var i = 0; i < imgInput.files.length; i++) {
+      await registerAndInsert(imgInput.files[i]);
+    }
+    if (imgInput.files.length) {
+      flash(dirHandle ? 'Image copied into project' : 'Image inserted (session only — open a Project to keep it)');
+    }
+    imgInput.value = '';
+  });
+
+  /* ---------- PDF export (browser print) ---------- */
+  function buildPrintArea() {
+    printArea.innerHTML = '';
+    slidesHtml.forEach(function (html, i) {
+      printArea.appendChild(buildSlideEl(html, i, slidesHtml.length, isTitleSlide(html)));
+    });
+  }
+  document.getElementById('pdfBtn').addEventListener('click', function () {
+    buildPrintArea();
+    window.print();
+  });
+  window.addEventListener('beforeprint', buildPrintArea);
+
+  /* ---------- Divider drag ---------- */
+  var divider = document.getElementById('divider');
+  var editorPane = document.getElementById('editorPane');
+  var dragging = false;
+  divider.addEventListener('mousedown', function () { dragging = true; document.body.style.userSelect = 'none'; });
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    var left = editorPane.getBoundingClientRect().left;
+    var w = Math.max(200, Math.min(e.clientX - left, window.innerWidth - 300));
+    editorPane.style.width = w + 'px';
+    fit();
+  });
+  document.addEventListener('mouseup', function () { dragging = false; document.body.style.userSelect = ''; });
+
+  window.addEventListener('resize', fit);
+
+  setFileLabel();
+  render();
+})();
+</script>
+</body>
+</html>

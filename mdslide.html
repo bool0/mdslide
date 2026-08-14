@@ -254,6 +254,52 @@
   .slide .cols .col img { display: block; margin: 10px auto; max-height: 360px; }
   .slide .cols .col pre { margin-top: 0; }
 
+  /* Math ($inline$ and $$display$$) */
+  .slide .math, .slide .math-block {
+    font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", Georgia, serif;
+  }
+  .slide .math-block { display: block; text-align: center; font-size: 28px; margin: 18px 0; }
+  .slide .math sup, .slide .math sub,
+  .slide .math-block sup, .slide .math-block sub { font-size: .68em; }
+  .slide .mfrac {
+    display: inline-flex;
+    flex-direction: column;
+    text-align: center;
+    vertical-align: middle;
+    margin: 0 3px;
+    line-height: 1.25;
+    font-size: .92em;
+  }
+  .slide .mfrac .mnum { display: block; border-bottom: 1.5px solid currentColor; padding: 0 4px; }
+  .slide .mfrac .mden { display: block; padding: 0 4px; }
+  .slide .msqrt .mrad { border-top: 1.5px solid currentColor; margin-left: 1px; padding: 0 3px; }
+  .slide .mover { text-decoration: overline; }
+  .slide .mfn, .slide .mtext { font-style: normal; }
+  .slide .mop { font-size: 1.3em; vertical-align: -0.1em; }
+  /* matrices (\begin{pmatrix} … \end{pmatrix} etc.) */
+  .slide .mmat { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 4px; }
+  .slide .mmat .mtab {
+    border-collapse: collapse;
+    margin: 0 !important;
+    font-size: inherit !important;
+    align-self: center;
+  }
+  .slide .mmat .mtab td {
+    border: none !important;
+    background: none !important;
+    padding: 3px 10px;
+    text-align: center;
+  }
+  .slide .mmat.mcases .mtab td { text-align: left; }
+  .slide .mp-l, .slide .mp-r, .slide .mb-l, .slide .mb-r { width: 7px; flex: 0 0 auto; }
+  .slide .mp-l { border: 1.7px solid currentColor; border-right: none; border-radius: 14px 0 0 14px; }
+  .slide .mp-r { border: 1.7px solid currentColor; border-left: none; border-radius: 0 14px 14px 0; }
+  .slide .mb-l { border: 1.7px solid currentColor; border-right: none; }
+  .slide .mb-r { border: 1.7px solid currentColor; border-left: none; }
+  .slide .mv-d { border-left: 1.7px solid currentColor; width: 2px; flex: 0 0 auto; }
+  .slide .mvv-d { border-left: 1.7px solid currentColor; border-right: 1.7px solid currentColor; width: 5px; flex: 0 0 auto; }
+  .slide .mcase-d { align-self: center; font-size: 1em; line-height: 1; transform: scaleY(var(--case-scale, 2)); transform-origin: center; margin-right: 2px; }
+
   /* Citations & references */
   .slide .cite-missing { color: #e05252; font-weight: 600; }
   .slide ol.refs, .slide ul.refs { padding-left: 30px; }
@@ -661,6 +707,147 @@
     return n;
   }
 
+  /* ---------- Lightweight TeX-subset math renderer ---------- */
+  var TEX_SYM = {
+    alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', varepsilon: 'ε',
+    zeta: 'ζ', eta: 'η', theta: 'θ', vartheta: 'ϑ', iota: 'ι', kappa: 'κ',
+    lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π', rho: 'ρ', sigma: 'σ',
+    tau: 'τ', upsilon: 'υ', phi: 'φ', varphi: 'φ', chi: 'χ', psi: 'ψ', omega: 'ω',
+    Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ', Xi: 'Ξ', Pi: 'Π',
+    Sigma: 'Σ', Upsilon: 'Υ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
+    times: '×', div: '÷', cdot: '·', pm: '±', mp: '∓',
+    le: '≤', leq: '≤', ge: '≥', geq: '≥', ne: '≠', neq: '≠',
+    approx: '≈', equiv: '≡', sim: '∼', propto: '∝', infty: '∞',
+    partial: '∂', nabla: '∇',
+    sum: '<span class="mop">∑</span>', prod: '<span class="mop">∏</span>',
+    int: '<span class="mop">∫</span>', oint: '<span class="mop">∮</span>',
+    'in': '∈', notin: '∉', subset: '⊂', supset: '⊃', subseteq: '⊆', supseteq: '⊇',
+    cup: '∪', cap: '∩', setminus: '∖', forall: '∀', exists: '∃',
+    neg: '¬', lnot: '¬', land: '∧', lor: '∨',
+    to: '→', rightarrow: '→', leftarrow: '←', Rightarrow: '⇒', Leftarrow: '⇐',
+    leftrightarrow: '↔', Leftrightarrow: '⇔', mapsto: '↦',
+    dots: '…', ldots: '…', cdots: '⋯', prime: '′', hbar: 'ℏ', ell: 'ℓ',
+    angle: '∠', perp: '⊥', parallel: '∥', emptyset: '∅', varnothing: '∅',
+    star: '⋆', circ: '∘', bullet: '•', oplus: '⊕', otimes: '⊗',
+    because: '∵', therefore: '∴', quad: ' ', qquad: '  '
+  };
+  var TEX_FN = { sin: 1, cos: 1, tan: 1, cot: 1, sec: 1, csc: 1, log: 1, ln: 1,
+    exp: 1, lim: 1, max: 1, min: 1, sup: 1, inf: 1, arg: 1, det: 1, gcd: 1,
+    Pr: 1, sinh: 1, cosh: 1, tanh: 1 };
+
+  function texToHtml(src) {
+    var i = 0, n = src.length;
+    function esc(c) {
+      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' :
+             c === '"' ? '&quot;' : c;
+    }
+    function rawGroupEsc() { // read a {...} group (or one char) verbatim
+      if (src[i] !== '{') { var ch = src[i] || ''; i++; return esc(ch); }
+      i++;
+      var depth = 1, out = '';
+      while (i < n && depth > 0) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}') { depth--; if (!depth) break; }
+        out += esc(src[i]);
+        i++;
+      }
+      i++;
+      return out;
+    }
+    function group() { // parse a {...} group or a single atom
+      if (i >= n) return '';
+      if (src[i] === '{') {
+        i++;
+        var out = '';
+        while (i < n && src[i] !== '}') out += atom();
+        i++;
+        return out;
+      }
+      return atom();
+    }
+    function atom() {
+      var c = src[i];
+      if (c === '{') return group();
+      if (c === '}') { i++; return ''; }
+      if (c === '\\') {
+        i++;
+        var m = /^[a-zA-Z]+/.exec(src.slice(i));
+        if (!m) { // escaped single char: \{ \$ \, etc.
+          var sc = src[i] || ''; i++;
+          if (sc === ',' || sc === ';') return ' ';
+          if (sc === '\\') return ' ';
+          return esc(sc);
+        }
+        var cmd = m[0];
+        i += cmd.length;
+        if (src[i] === ' ') i++;
+        if (cmd === 'begin') {
+          var env = rawGroupEsc();
+          var endTag = '\\end{' + env + '}';
+          var endIdx = src.indexOf(endTag, i);
+          var body = endIdx >= 0 ? src.slice(i, endIdx) : src.slice(i);
+          i = endIdx >= 0 ? endIdx + endTag.length : n;
+          return texMatrix(env, body);
+        }
+        if (cmd === 'end') { rawGroupEsc(); return ''; }
+        if (cmd === 'frac') {
+          var num = group(), den = group();
+          return '<span class="mfrac"><span class="mnum">' + num +
+                 '</span><span class="mden">' + den + '</span></span>';
+        }
+        if (cmd === 'sqrt') return '<span class="msqrt">√<span class="mrad">' + group() + '</span></span>';
+        if (cmd === 'text' || cmd === 'mathrm' || cmd === 'operatorname') {
+          return '<span class="mtext">' + rawGroupEsc() + '</span>';
+        }
+        if (cmd === 'mathbf' || cmd === 'boldsymbol') return '<b>' + group() + '</b>';
+        if (cmd === 'mathit') return '<i>' + rawGroupEsc() + '</i>';
+        if (cmd === 'bar' || cmd === 'overline') return '<span class="mover">' + group() + '</span>';
+        if (cmd === 'hat') return group() + '̂';
+        if (cmd === 'vec') return group() + '⃗';
+        if (cmd === 'tilde') return group() + '̃';
+        if (cmd === 'left' || cmd === 'right' || cmd === 'displaystyle') return '';
+        if (TEX_FN[cmd]) return '<span class="mfn">' + cmd + '</span>';
+        if (TEX_SYM.hasOwnProperty(cmd)) return TEX_SYM[cmd];
+        return '<span class="mtext">' + esc('\\') + cmd + '</span>'; // unknown command: show as-is
+      }
+      if (c === '^' || c === '_') {
+        i++;
+        var content = group();
+        return c === '^' ? '<sup>' + content + '</sup>' : '<sub>' + content + '</sub>';
+      }
+      i++;
+      if (/[a-zA-Z]/.test(c)) return '<i>' + c + '</i>';
+      return esc(c);
+    }
+    var out = '';
+    while (i < n) out += atom();
+    return out;
+  }
+
+  // matrix-style environments: matrix, pmatrix ( ), bmatrix [ ], vmatrix | |,
+  // Vmatrix ‖ ‖, cases {
+  function texMatrix(env, body) {
+    var rows = body.split('\\\\').map(function (r) { return r.trim(); })
+                   .filter(function (r) { return r !== ''; });
+    if (!rows.length) return '';
+    var tr = rows.map(function (r) {
+      return '<tr>' + r.split('&').map(function (c) {
+        return '<td>' + texToHtml(c.trim()) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    var table = '<table class="mtab"><tbody>' + tr + '</tbody></table>';
+    var left = '', right = '', extra = '';
+    if (env === 'pmatrix') { left = '<span class="mp-l"></span>'; right = '<span class="mp-r"></span>'; }
+    else if (env === 'bmatrix') { left = '<span class="mb-l"></span>'; right = '<span class="mb-r"></span>'; }
+    else if (env === 'vmatrix') { left = '<span class="mv-d"></span>'; right = '<span class="mv-d"></span>'; }
+    else if (env === 'Vmatrix') { left = '<span class="mvv-d"></span>'; right = '<span class="mvv-d"></span>'; }
+    else if (env === 'cases') {
+      left = '<span class="mcase-d" style="--case-scale:' + (rows.length * 1.15) + '">{</span>';
+      extra = ' mcases';
+    }
+    return '<span class="mmat' + extra + '">' + left + table + right + '</span>';
+  }
+
   /* ---------- Minimal Markdown parser ---------- */
   function escapeHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -668,13 +855,18 @@
   }
 
   function inline(s) {
-    s = escapeHtml(s);
-    // handle inline code first to protect its content
-    var codes = [];
+    // protect inline code and math from all other processing
+    var stash = [];
+    function keep(html) { stash.push(html); return '\u0001K' + (stash.length - 1) + 'K\u0001'; }
     s = s.replace(/`([^`]+)`/g, function (_, c) {
-      codes.push(c);
-      return '\u0001C' + (codes.length - 1) + 'C\u0001';
+      return keep('<code>' + escapeHtml(c) + '</code>');
     });
+    // $...$ inline math (must start and end with a non-space character)
+    s = s.replace(/\$([^\s$][^$\n]*?)\$/g, function (full, tex) {
+      if (/\s$/.test(tex)) return full;
+      return keep('<span class="math">' + texToHtml(tex) + '</span>');
+    });
+    s = escapeHtml(s);
     // citations: [@key] or [@key1; @key2]
     s = s.replace(/\[(@[^\]]+)\]/g, function (full, inner) {
       if (!/^@[^;\s]+(\s*;\s*@[^;\s]+)*$/.test(inner.trim())) return full;
@@ -688,8 +880,8 @@
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
     s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-    s = s.replace(/\u0001C(\d+)C\u0001/g, function (_, i) {
-      return '<code>' + codes[+i] + '</code>';
+    s = s.replace(/\u0001K(\d+)K\u0001/g, function (_, i) {
+      return stash[+i];
     });
     return s;
   }
@@ -816,6 +1008,28 @@
           }).join('');
           html.push('<pre><code class="numbered">' + codeLines + '</code></pre>');
         }
+        continue;
+      }
+
+      // display math: $$ ... $$ (single line or multi-line)
+      if (/^\$\$/.test(line)) {
+        var oneLine = line.match(/^\$\$(.*)\$\$\s*$/);
+        var mbuf = [];
+        if (oneLine) {
+          if (oneLine[1].trim()) mbuf.push(oneLine[1]);
+          i++;
+        } else {
+          var rest = line.replace(/^\$\$/, '');
+          if (rest.trim()) mbuf.push(rest);
+          i++;
+          while (i < lines.length && !/\$\$\s*$/.test(lines[i])) { mbuf.push(lines[i]); i++; }
+          if (i < lines.length) {
+            var tail = lines[i].replace(/\$\$\s*$/, '');
+            if (tail.trim()) mbuf.push(tail);
+            i++;
+          }
+        }
+        html.push('<div class="math-block">' + texToHtml(mbuf.join(' ')) + '</div>');
         continue;
       }
 
@@ -1020,6 +1234,18 @@
     '> Note: `|||` is custom syntax of this tool — standard Markdown has',
     '> no column syntax (Marp etc. invent their own), so other renderers',
     '> will show `|||` as plain text.',
+    '',
+    '---',
+    '',
+    '## Math',
+    '',
+    'Inline math with `$...$`: $E = mc^2$, $\\alpha + \\beta \\le \\gamma$',
+    '',
+    'Display math with `$$...$$`:',
+    '',
+    '$$ \\mathrm{MSE} = \\frac{1}{N} \\sum_{i=1}^{N} (y_i - \\hat{y}_i)^2 $$',
+    '',
+    '$$ A = \\begin{bmatrix} 1 & 2 \\\\ 3 & 4 \\end{bmatrix} \\quad P = \\begin{pmatrix} \\alpha & \\beta \\\\ \\gamma & \\delta \\end{pmatrix} $$',
     '',
     '---',
     '',

@@ -419,7 +419,8 @@
   </label>
   <label>Cite
     <select id="citeSelect" title="In-text citation style">
-      <option value="numeric">[1]</option>
+      <option value="numeric">[1] by order</option>
+      <option value="numeric-alpha">[1] A–Z</option>
       <option value="author-year">(Author, Year)</option>
     </select>
   </label>
@@ -595,7 +596,37 @@
     return citedIndex[key];
   }
 
+  // runtime-built sentinel for deferred alphabetical numbering (no literal
+  // control chars in source)
+  var ATOK = String.fromCharCode(2);
+  var ATOK_RE = new RegExp(ATOK + '([^' + ATOK + ']*)' + ATOK, 'g');
+
+  function alphaCompare(a, b) {
+    var ea = getBib(a), eb = getBib(b);
+    var ka = (lastNames(ea)[0] || '') + (ea.year || '');
+    var kb = (lastNames(eb)[0] || '') + (eb.year || '');
+    return ka.localeCompare(kb);
+  }
+
+  // replace deferred citation tokens once the alphabetical numbering is known
+  function applyAlphaNumbers(html, numMap) {
+    return html.replace(ATOK_RE, function (_, keyStr) {
+      var nums = [], missing = [];
+      keyStr.split(';').forEach(function (k) {
+        if (numMap[k]) nums.push(numMap[k]);
+        else missing.push('<span class="cite-missing">?' + escapeHtml(k) + '</span>');
+      });
+      nums.sort(function (a, b) { return a - b; });
+      var parts = nums.concat(missing);
+      return parts.length ? '[' + parts.join(', ') + ']' : '';
+    });
+  }
+
   function renderCitation(keys) {
+    if (citeStyle === 'numeric-alpha') {
+      keys.forEach(function (k) { if (getBib(k)) citeNumber(k); }); // record as cited
+      return ATOK + keys.join(';') + ATOK; // number assigned after the full pass
+    }
     if (citeStyle === 'numeric') {
       var nums = [], missing = [];
       keys.forEach(function (k) {
@@ -643,20 +674,13 @@
   // formatted reference strings in display order (citation order or alphabetical)
   function referenceItems() {
     var keys = citedOrder.filter(function (k) { return getBib(k); });
-    if (citeStyle !== 'numeric') {
-      keys = keys.slice().sort(function (a, b) {
-        var ea = getBib(a), eb = getBib(b);
-        var ka = (lastNames(ea)[0] || '') + (ea.year || '');
-        var kb = (lastNames(eb)[0] || '') + (eb.year || '');
-        return ka.localeCompare(kb);
-      });
-    }
+    if (citeStyle !== 'numeric') keys = keys.slice().sort(alphaCompare);
     return keys.map(function (k) { return formatRef(getBib(k)); });
   }
 
   function refsListHtml(items, startNum) {
     var lis = items.map(function (it) { return '<li>' + it + '</li>'; }).join('');
-    if (citeStyle === 'numeric') {
+    if (citeStyle !== 'author-year') {
       return '<ol class="refs" start="' + startNum + '">' + lis + '</ol>';
     }
     return '<ul class="refs" style="list-style:none;padding-left:0">' + lis + '</ul>';
@@ -1353,6 +1377,15 @@
 
     var slides = splitSlides(editor.value);
     slidesHtml = slides.map(function (s) { return parseSlide(s); });
+
+    // numeric-alpha: number the cited entries alphabetically, then back-fill
+    // the deferred in-text tokens
+    if (citeStyle === 'numeric-alpha') {
+      var alphaKeys = citedOrder.filter(function (k) { return getBib(k); }).slice().sort(alphaCompare);
+      var numMap = {};
+      alphaKeys.forEach(function (k, idx) { numMap[k] = idx + 1; });
+      slidesHtml = slidesHtml.map(function (h) { return applyAlphaNumbers(h, numMap); });
+    }
 
     // expand [references] placeholders now that every citation is numbered,
     // splitting overflowing reference lists across multiple slides

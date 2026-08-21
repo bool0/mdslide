@@ -101,10 +101,11 @@ made them practical [@vaswani2017; @devlin2019].
 [references]
 ```
 
-Two citation styles, switchable in the toolbar:
+Three citation styles, switchable in the toolbar:
 
-- **Numeric** — `[1]`, `[1, 2]`, references numbered in citation order
-- **Author–Year** — `(Vaswani et al., 2017)`, references sorted alphabetically
+- **Numeric (by order)** — `[1]`, `[1, 2]`, references numbered in citation order (IEEE-style)
+- **Numeric (A–Z)** — same in-text look, but references are sorted alphabetically first and numbered `1..N` in that order
+- **Author–Year** — `(Vaswani et al., 2017)`, references sorted alphabetically (APA-style)
 
 Reference lists that don't fit on one slide **paginate automatically** across as many slides as needed, with continuous numbering.
 
@@ -159,6 +160,12 @@ On Safari/Firefox the folder features are unavailable; **Import** (file picker) 
 ## Development
 
 Everything lives in a single `mdslide.html` — vanilla JS, no build. Open it, edit it, refresh. The file contains, in order: theme CSS, print CSS, a small TeX renderer, a Markdown parser, a BibTeX parser, the mind-map layout engine, and the app wiring.
+
+## Disclaimer
+
+This software is provided **"as is"**, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages, data loss, or other liability — whether in an action of contract, tort, or otherwise — arising from, out of, or in connection with the software or the use of or other dealings in the software.
+
+You are solely responsible for the content you create, store, and export with this tool. Content is saved to your browser's local storage and to files you choose on your own machine; nothing is uploaded anywhere. Always keep your own backups of important documents and verify exported files before relying on them.
 
 ## License
 

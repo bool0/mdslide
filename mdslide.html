@@ -1,4 +1,29 @@
 <!DOCTYPE html>
+<!--
+  MD Slide - a zero-dependency Markdown -> slides tool in a single HTML file.
+
+  Copyright 2026 The MD Slide Authors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  DISCLAIMER: This software is provided for general use "as is", without
+  warranty of any kind. In no event shall the authors or copyright holders
+  be liable for any claim, damages, data loss, or other liability arising
+  from, out of, or in connection with the software or its use. Users are
+  solely responsible for the content they create, store, and export with
+  this tool, and for verifying that exported documents meet their needs
+  before relying on them.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -28,12 +53,22 @@
   #toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
+    gap: 6px;
+    padding: 8px 12px;
     background: var(--ui-panel);
     border-bottom: 1px solid var(--ui-border);
     flex: 0 0 auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  #toolbar > * { flex: 0 0 auto; }
+  /* progressively shed toolbar chrome on narrower windows;
+     flash messages (.flashing) stay visible at any width */
+  @media (max-width: 1280px) { #status:not(.flashing) { display: none; } }
+  @media (max-width: 1120px) {
+    #toolbar .lbl { display: none; }
+    #fileName { max-width: 110px; }
   }
   #toolbar .logo { font-weight: 700; font-size: 15px; letter-spacing: .5px; margin-right: 4px; }
   #toolbar .logo span { color: var(--ui-accent); }
@@ -244,6 +279,11 @@
     opacity: .5;
   }
 
+  /* Raw HTML blocks (inline SVG etc.) */
+  .slide .raw-html { margin: 10px 0; min-height: 0; }
+  .slide .raw-html svg { max-width: 100%; max-height: 330px; height: auto; }
+  .slide .raw-html img { max-width: 100%; }
+
   /* Mind map (```mindmap fenced block) */
   .slide .mindmap { margin: 10px 0; text-align: center; }
   .slide .mindmap svg { max-width: 100%; max-height: 380px; height: auto; }
@@ -275,6 +315,16 @@
   .slide .msqrt .mrad { border-top: 1.5px solid currentColor; margin-left: 1px; padding: 0 3px; }
   .slide .mover { text-decoration: overline; }
   .slide .mfn, .slide .mtext { font-style: normal; }
+  .slide .mbig { vertical-align: -0.08em; line-height: 1; }
+  /* \left( … \right) — delimiters stretch to the content height */
+  .slide .mlr { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 1px; }
+  .slide .mlr-c { display: inline-block; padding: 0 2px; }
+  .slide .mlr-fall { align-self: center; font-size: 1.45em; line-height: 1; }
+  /* \widehat / \widetilde — accent stretches over the whole group */
+  .slide .mwide { display: inline-flex; flex-direction: column; align-items: stretch; vertical-align: middle; line-height: 1.15; }
+  .slide .mwide-acc { display: block; height: .3em; }
+  .slide .mwide-acc svg { display: block; width: 100%; height: 100%; }
+  .slide .mwide-c { text-align: center; }
   .slide .mop { font-size: 1.3em; vertical-align: -0.1em; }
   /* matrices (\begin{pmatrix} … \end{pmatrix} etc.) */
   .slide .mmat { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 4px; }
@@ -408,7 +458,7 @@
   <button id="importBtn" title="Import a markdown file">&#11014; Import</button>
   <button id="imageBtn" title="Insert a local image">&#128444; Image</button>
   <span id="fileName">unsaved draft</span>
-  <label>Theme
+  <label title="Theme"><span class="lbl">Theme </span>
     <select id="themeSelect">
       <option value="theme-clean">Clean</option>
       <option value="theme-dark">Dark</option>
@@ -417,7 +467,7 @@
       <option value="theme-paper">Paper</option>
     </select>
   </label>
-  <label>Cite
+  <label title="Citation style"><span class="lbl">Cite </span>
     <select id="citeSelect" title="In-text citation style">
       <option value="numeric">[1] by order</option>
       <option value="numeric-alpha">[1] A–Z</option>
@@ -431,7 +481,7 @@
   </div>
   <div class="spacer"></div>
   <span id="status">Use --- to split slides</span>
-  <button id="pdfBtn" class="primary">&#11015; Download PDF</button>
+  <button id="pdfBtn" class="primary">&#11015;<span class="lbl"> Download</span> PDF</button>
 </div>
 
 <div id="main">
@@ -477,8 +527,12 @@
   var statusTimer = null;
   function flash(msg) {
     statusEl.textContent = msg;
+    statusEl.classList.add('flashing');
     clearTimeout(statusTimer);
-    statusTimer = setTimeout(function () { statusEl.textContent = HINT; }, 3000);
+    statusTimer = setTimeout(function () {
+      statusEl.textContent = HINT;
+      statusEl.classList.remove('flashing');
+    }, 3000);
   }
 
   /* ---------- Local images: name -> object/data URL ---------- */
@@ -753,6 +807,14 @@
     dots: '…', ldots: '…', cdots: '⋯', prime: '′', hbar: 'ℏ', ell: 'ℓ',
     angle: '∠', perp: '⊥', parallel: '∥', emptyset: '∅', varnothing: '∅',
     star: '⋆', circ: '∘', bullet: '•', oplus: '⊕', otimes: '⊗',
+    odot: '⊙', ominus: '⊖', oslash: '⊘', ast: '∗',
+    wedge: '∧', vee: '∨', cong: '≅', simeq: '≃', asymp: '≍',
+    ll: '≪', gg: '≫', prec: '≺', succ: '≻', preceq: '⪯', succeq: '⪰',
+    leqslant: '⩽', geqslant: '⩾', mid: '∣', nmid: '∤',
+    vdots: '⋮', ddots: '⋱', iff: '⇔', implies: '⇒', impliedby: '⇐',
+    top: '⊤', bot: '⊥', models: '⊨', vdash: '⊢', dashv: '⊣',
+    aleph: 'ℵ', Re: 'ℜ', Im: 'ℑ', wp: '℘', triangle: '△', triangleq: '≜',
+    doteq: '≐', coloneqq: '≔', degree: '°', dagger: '†', ddagger: '‡',
     because: '∵', therefore: '∴', quad: ' ', qquad: '  '
   };
   var TEX_FN = { sin: 1, cos: 1, tan: 1, cot: 1, sec: 1, csc: 1, log: 1, ln: 1,
@@ -777,6 +839,28 @@
       }
       i++;
       return out;
+    }
+    function readDelim() { // one delimiter char or \command after \left, \right, \big…
+      if (src[i] === '\\') {
+        i++;
+        var dm = /^[a-zA-Z]+/.exec(src.slice(i));
+        if (dm) { i += dm[0].length; return TEX_SYM[dm[0]] || dm[0]; }
+        var c = src[i] || ''; i++;
+        return c === '|' ? '‖' : c; // \| is the double bar
+      }
+      var c2 = src[i] || ''; i++;
+      return c2;
+    }
+    function stretchDelim(d, side) { // stretchy delimiter matching content height
+      if (d === '.') return '';
+      if (d === '(') return '<span class="mp-l"></span>';
+      if (d === ')') return '<span class="mp-r"></span>';
+      if (d === '[') return '<span class="mb-l"></span>';
+      if (d === ']') return '<span class="mb-r"></span>';
+      if (d === '|' || d === '∣') return '<span class="mv-d"></span>';
+      if (d === '‖' || d === '∥') return '<span class="mvv-d"></span>';
+      // braces / angle brackets: no border trick — show a big centered glyph
+      return '<span class="mlr-fall">' + esc(d) + '</span>';
     }
     function group() { // parse a {...} group or a single atom
       if (i >= n) return '';
@@ -805,6 +889,14 @@
         var cmd = m[0];
         i += cmd.length;
         if (src[i] === ' ') i++;
+        // \big( \Big[ \bigg\{ \Biggr) … — scaled delimiters
+        var bigBase = cmd.replace(/[lrm]$/, '');
+        if (bigBase === 'big' || bigBase === 'Big' || bigBase === 'bigg' || bigBase === 'Bigg') {
+          var bigSize = { big: 1.2, Big: 1.5, bigg: 1.85, Bigg: 2.2 }[bigBase];
+          var delim = readDelim();
+          if (delim === '.') return ''; // TeX's invisible delimiter
+          return '<span class="mbig" style="font-size:' + bigSize + 'em">' + esc(delim) + '</span>';
+        }
         if (cmd === 'begin') {
           var env = rawGroupEsc();
           var endTag = '\\end{' + env + '}';
@@ -823,13 +915,40 @@
         if (cmd === 'text' || cmd === 'mathrm' || cmd === 'operatorname') {
           return '<span class="mtext">' + rawGroupEsc() + '</span>';
         }
+        if (cmd === 'textbf') return '<span class="mtext"><b>' + rawGroupEsc() + '</b></span>';
+        if (cmd === 'textit' || cmd === 'emph') return '<span class="mtext"><em>' + rawGroupEsc() + '</em></span>';
+        if (cmd === 'texttt') return '<span class="mtext" style="font-family:monospace">' + rawGroupEsc() + '</span>';
         if (cmd === 'mathbf' || cmd === 'boldsymbol') return '<b>' + group() + '</b>';
         if (cmd === 'mathit') return '<i>' + rawGroupEsc() + '</i>';
         if (cmd === 'bar' || cmd === 'overline') return '<span class="mover">' + group() + '</span>';
         if (cmd === 'hat') return group() + '̂';
         if (cmd === 'vec') return group() + '⃗';
         if (cmd === 'tilde') return group() + '̃';
-        if (cmd === 'left' || cmd === 'right' || cmd === 'displaystyle') return '';
+        if (cmd === 'widehat' || cmd === 'widetilde') {
+          var wideAcc = cmd === 'widehat'
+            ? '<svg viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="2,18 50,3 98,18" fill="none" stroke="currentColor" stroke-width="5"/></svg>'
+            : '<svg viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M3,15 C22,2 42,4 52,10 C62,16 80,18 97,5" fill="none" stroke="currentColor" stroke-width="5"/></svg>';
+          return '<span class="mwide"><span class="mwide-acc">' + wideAcc +
+                 '</span><span class="mwide-c">' + group() + '</span></span>';
+        }
+        if (cmd === 'underline') return '<span style="text-decoration:underline">' + group() + '</span>';
+        if (cmd === 'left') {
+          var ldelim = readDelim();
+          var lrContent = '';
+          var lrGuard = 0;
+          while (i < n && lrGuard++ < 10000) {
+            if (src[i] === '\\' && /^right(?![a-zA-Z])/.test(src.slice(i + 1))) {
+              i += 6; // consume "\right"
+              break;
+            }
+            lrContent += atom();
+          }
+          var rdelim = readDelim();
+          return '<span class="mlr">' + stretchDelim(ldelim, 'l') +
+                 '<span class="mlr-c">' + lrContent + '</span>' +
+                 stretchDelim(rdelim, 'r') + '</span>';
+        }
+        if (cmd === 'right' || cmd === 'displaystyle') return ''; // stray \right
         if (TEX_FN[cmd]) return '<span class="mfn">' + cmd + '</span>';
         if (TEX_SYM.hasOwnProperty(cmd)) return TEX_SYM[cmd];
         return '<span class="mtext">' + esc('\\') + cmd + '</span>'; // unknown command: show as-is
@@ -1032,6 +1151,33 @@
           }).join('');
           html.push('<pre><code class="numbered">' + codeLines + '</code></pre>');
         }
+        continue;
+      }
+
+      // raw HTML block (inline <svg> diagrams, <video>, custom markup, …):
+      // a line starting with a tag passes through unparsed until the tag closes
+      var rawTag = line.match(/^\s*<([a-zA-Z][a-zA-Z0-9-]*)[\s/>]/);
+      if (rawTag) {
+        var tag = rawTag[1].toLowerCase();
+        var VOID_TAGS = { img: 1, br: 1, hr: 1, input: 1, source: 1, embed: 1 };
+        var rbuf = [];
+        if (VOID_TAGS[tag]) {
+          rbuf.push(lines[i]);
+          i++;
+        } else {
+          var openRe = new RegExp('<' + tag + '(?=[\\s/>])', 'gi');
+          var closeRe = new RegExp('</' + tag + '\\s*>', 'gi');
+          var selfRe = new RegExp('<' + tag + '[^>]*/>', 'gi');
+          var depth = 0;
+          do {
+            depth += (lines[i].match(openRe) || []).length -
+                     (lines[i].match(closeRe) || []).length -
+                     (lines[i].match(selfRe) || []).length;
+            rbuf.push(lines[i]);
+            i++;
+          } while (i < lines.length && depth > 0);
+        }
+        html.push('<div class="raw-html">' + rbuf.join('\n') + '</div>');
         continue;
       }
 

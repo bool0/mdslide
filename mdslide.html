@@ -312,6 +312,9 @@
   }
   .slide .mfrac .mnum { display: block; border-bottom: 1.5px solid currentColor; padding: 0 4px; }
   .slide .mfrac .mden { display: block; padding: 0 4px; }
+  .slide .mfrac-t { font-size: .78em; }
+  .slide .mfrac-d { font-size: 1em; }
+  .slide .mfrac-binom .mnum { border-bottom: none; }
   .slide .msqrt .mrad { border-top: 1.5px solid currentColor; margin-left: 1px; padding: 0 3px; }
   .slide .mover { text-decoration: overline; }
   .slide .mfn, .slide .mtext { font-style: normal; }
@@ -882,7 +885,10 @@
         var m = /^[a-zA-Z]+/.exec(src.slice(i));
         if (!m) { // escaped single char: \{ \$ \, etc.
           var sc = src[i] || ''; i++;
-          if (sc === ',' || sc === ';') return ' ';
+          if (sc === ',') return ' ';
+          if (sc === ':') return ' ';
+          if (sc === ';') return ' ';
+          if (sc === '!') return '<span style="margin-left:-.17em"></span>';
           if (sc === '\\') return ' ';
           return esc(sc);
         }
@@ -906,10 +912,18 @@
           return texMatrix(env, body);
         }
         if (cmd === 'end') { rawGroupEsc(); return ''; }
-        if (cmd === 'frac') {
+        if (cmd === 'frac' || cmd === 'tfrac' || cmd === 'dfrac' || cmd === 'cfrac') {
           var num = group(), den = group();
-          return '<span class="mfrac"><span class="mnum">' + num +
+          var fcls = 'mfrac' + (cmd === 'tfrac' ? ' mfrac-t' : (cmd === 'dfrac' ? ' mfrac-d' : ''));
+          return '<span class="' + fcls + '"><span class="mnum">' + num +
                  '</span><span class="mden">' + den + '</span></span>';
+        }
+        if (cmd === 'binom') {
+          var bt = group(), bb = group();
+          return '<span class="mlr"><span class="mp-l"></span><span class="mlr-c">' +
+                 '<span class="mfrac mfrac-binom"><span class="mnum">' + bt +
+                 '</span><span class="mden">' + bb + '</span></span></span>' +
+                 '<span class="mp-r"></span></span>';
         }
         if (cmd === 'sqrt') return '<span class="msqrt">√<span class="mrad">' + group() + '</span></span>';
         if (cmd === 'text' || cmd === 'mathrm' || cmd === 'operatorname') {

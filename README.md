@@ -52,7 +52,15 @@ Some explanation text.
 ![figure](figure.png)
 ```
 
-Use `||| 2` to make the next column twice as wide. More `|||` markers give you three or more columns.
+Each column starts at the **top** of the slide and flows downward, and columns are fully independent — a list in one column has nothing to do with a list in the next (numbering restarts, nesting is separate).
+
+Modifiers on the separator line:
+
+- `||| 2` — the next column is twice as wide (any number works, e.g. `||| 0.5` for a narrower one)
+- `||| ~` — center that column vertically instead of top-aligning it (handy for an image beside a long list)
+- `||| 2 ~` — both
+
+More `|||` markers give you three or more columns.
 
 > `|||` is custom syntax of this tool — standard Markdown has no column syntax, so other renderers will show it as plain text.
 
@@ -169,4 +177,6 @@ You are solely responsible for the content you create, store, and export with th
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache 2.0](LICENSE) — see also [NOTICE](NOTICE).
+
+The tool has **no third-party dependencies** and bundles no third-party code, fonts, or assets; the Markdown parser, math renderer, and mind-map layout are original implementations. Apache 2.0 grants you the right to use, modify, and redistribute this software, including commercially, provided you keep the copyright and license notices. It does not grant rights to any trademark.

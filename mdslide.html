@@ -289,10 +289,15 @@
   .slide .mindmap svg { max-width: 100%; max-height: 380px; height: auto; }
 
   /* Columns (||| separator inside a slide) */
-  .slide .cols { display: flex; gap: 44px; align-items: center; width: 100%; min-height: 0; }
+  /* columns read top-down and independently, like separate pages side by side */
+  .slide .cols { display: flex; gap: 44px; align-items: flex-start; width: 100%; min-height: 0; }
   .slide .cols .col { flex: 1; min-width: 0; }
-  .slide .cols .col img { display: block; margin: 10px auto; max-height: 360px; }
+  .slide .cols .col > *:first-child { margin-top: 0; }
+  .slide .cols .col > *:last-child { margin-bottom: 0; }
+  .slide .cols .col img { display: block; margin: 0 auto 10px; max-height: 360px; }
   .slide .cols .col pre { margin-top: 0; }
+  /* ||| ~ centers that column's content vertically instead */
+  .slide .cols .col.vcenter { align-self: center; }
 
   /* Math ($inline$ and $$display$$) */
   .slide .math, .slide .math-block {
@@ -455,7 +460,7 @@
 <body>
 
 <div id="toolbar">
-  <div class="logo">MD<span>Slide</span></div>
+  <div class="logo" title="MD Slide — Apache 2.0. Provided &quot;as is&quot;, without warranty of any kind; the authors are not liable for any damages or data loss. Your content stays in this browser and in files you choose — nothing is uploaded. Keep your own backups.">MD<span>Slide</span></div>
   <button id="folderBtn" title="Open a local folder as project">&#128193; Project</button>
   <button id="saveBtn" title="Save markdown (Ctrl/Cmd+S)">&#128190; Save</button>
   <button id="importBtn" title="Import a markdown file">&#11014; Import</button>
@@ -1290,13 +1295,15 @@
   // parse one slide's lines, honoring ||| column separators;
   // leading headings before the first ||| stay full-width above the columns
   function parseSlide(lines) {
-    var segs = [[]], ratios = [1], inFence = false;
+    var segs = [[]], ratios = [1], vcenter = [false], inFence = false;
     for (var i = 0; i < lines.length; i++) {
       if (/^```/.test(lines[i])) inFence = !inFence;
-      var m = !inFence && lines[i].match(/^\|\|\|\s*([\d.]+)?\s*$/);
+      // ||| [width] [~]   — ~ vertically centers that column instead of top-aligning
+      var m = !inFence && lines[i].match(/^\|\|\|\s*([\d.]+)?\s*(~)?\s*$/);
       if (m) {
         segs.push([]);
         ratios.push(m[1] ? parseFloat(m[1]) || 1 : 1);
+        vcenter.push(!!m[2]);
       } else {
         segs[segs.length - 1].push(lines[i]);
       }
@@ -1312,7 +1319,8 @@
     var headerHtml = headerEnd ? parseBlocks(first.slice(0, headerEnd)) : '';
     segs[0] = first.slice(headerEnd);
     var cols = segs.map(function (sg, idx) {
-      return '<div class="col" style="flex:' + ratios[idx] + '">' + parseBlocks(sg) + '</div>';
+      return '<div class="col' + (vcenter[idx] ? ' vcenter' : '') +
+             '" style="flex:' + ratios[idx] + '">' + parseBlocks(sg) + '</div>';
     }).join('');
     return headerHtml + '<div class="cols">' + cols + '</div>';
   }
@@ -1411,9 +1419,10 @@
     '',
     '## Column Tips',
     '',
+    '- Each column starts at the top and flows down, independently',
     '- Headings above the first `|||` stay full-width',
     '- Use `||| 2` to make the next column twice as wide',
-    '- Works with images: `![figure](figure.png)`',
+    '- Use `||| ~` to center that column vertically instead',
     '',
     '> Note: `|||` is custom syntax of this tool — standard Markdown has',
     '> no column syntax (Marp etc. invent their own), so other renderers',

@@ -333,8 +333,27 @@
   .slide .mwide-acc { display: block; height: .3em; }
   .slide .mwide-acc svg { display: block; width: 100%; height: 100%; }
   .slide .mwide-c { text-align: center; }
+  /* \xrightarrow{…} — label(s) stacked over a stretchable arrow */
+  .slide .mxarr { display: inline-flex; flex-direction: column; align-items: stretch;
+                  vertical-align: middle; margin: 0 .2em; min-width: 2.2em; line-height: 1.15; }
+  .slide .mxarr-lab { font-size: .68em; text-align: center; padding: 0 .45em; white-space: nowrap; }
+  .slide .mxarr-a { display: flex; align-items: center; width: 100%; height: .62em; }
+  .slide .mxarr-s { flex: 1; border-top: 1.3px solid currentColor; }
+  .slide .mxarr-s.dbl { border-top: 1.3px solid currentColor; border-bottom: 1.3px solid currentColor; height: .26em; }
+  .slide .mxarr-hr { width: 0; height: 0; border-left: .42em solid currentColor;
+                     border-top: .23em solid transparent; border-bottom: .23em solid transparent; }
+  .slide .mxarr-hl { width: 0; height: 0; border-right: .42em solid currentColor;
+                     border-top: .23em solid transparent; border-bottom: .23em solid transparent; }
   .slide .mop { font-size: 1.3em; vertical-align: -0.1em; }
   /* matrices (\begin{pmatrix} … \end{pmatrix} etc.) */
+  /* align / gather environments */
+  .slide .malign { border-collapse: collapse; display: inline-table; vertical-align: middle;
+                   margin: 0 !important; font-size: inherit !important; }
+  .slide .malign td { border: none !important; background: none !important; padding: 4px 0; }
+  .slide .malign td:nth-child(odd) { text-align: right; }
+  .slide .malign td:nth-child(even) { text-align: left; padding-left: .18em; }
+  .slide .malign td:nth-child(even):not(:last-child) { padding-right: 2em; }
+  .slide .mgather td { text-align: center !important; }
   .slide .mmat { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 4px; }
   .slide .mmat .mtab {
     border-collapse: collapse;
@@ -930,6 +949,34 @@
                  '</span><span class="mden">' + bb + '</span></span></span>' +
                  '<span class="mp-r"></span></span>';
         }
+        // \xrightarrow[below]{above} — arrow stretches to fit its labels
+        if (/^x(rightarrow|leftarrow|Rightarrow|Leftarrow|longrightarrow|longleftarrow)$/i.test(cmd)) {
+          var xBelow = '';
+          if (src[i] === '[') {
+            i++;
+            var bd = 1, rawB = '';
+            while (i < n && bd > 0) {
+              if (src[i] === '[') bd++;
+              else if (src[i] === ']') { bd--; if (!bd) break; }
+              rawB += src[i];
+              i++;
+            }
+            i++;
+            xBelow = texToHtml(rawB);
+          }
+          var xAbove = group();
+          var xLeft = /left/i.test(cmd);
+          var xDbl = /^x[RL]/.test(cmd);
+          var xHead = '<span class="mxarr-h' + (xLeft ? 'l' : 'r') + '"></span>';
+          var xShaft = '<span class="mxarr-s' + (xDbl ? ' dbl' : '') + '"></span>';
+          return '<span class="mxarr">' +
+                 '<span class="mxarr-lab">' + xAbove + '</span>' +
+                 '<span class="mxarr-a">' + (xLeft ? xHead + xShaft : xShaft + xHead) + '</span>' +
+                 (xBelow ? '<span class="mxarr-lab">' + xBelow + '</span>' : '') +
+                 '</span>';
+        }
+        if (cmd === 'notag' || cmd === 'nonumber') return '';
+        if (cmd === 'label' || cmd === 'tag') { rawGroupEsc(); return ''; }
         if (cmd === 'sqrt') return '<span class="msqrt">√<span class="mrad">' + group() + '</span></span>';
         if (cmd === 'text' || cmd === 'mathrm' || cmd === 'operatorname') {
           return '<span class="mtext">' + rawGroupEsc() + '</span>';
@@ -992,6 +1039,16 @@
     var rows = body.split('\\\\').map(function (r) { return r.trim(); })
                    .filter(function (r) { return r !== ''; });
     if (!rows.length) return '';
+    // alignment environments: & is an alignment anchor, one equation per row
+    if (/^(align|aligned|gather|split|eqnarray|flalign|alignat|alignedat)\*?$/.test(env)) {
+      var acls = /^gather/.test(env) ? 'malign mgather' : 'malign';
+      var atr = rows.map(function (r) {
+        return '<tr>' + r.split('&').map(function (c) {
+          return '<td>' + texToHtml(c.trim()) + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+      return '<table class="' + acls + '"><tbody>' + atr + '</tbody></table>';
+    }
     var tr = rows.map(function (r) {
       return '<tr>' + r.split('&').map(function (c) {
         return '<td>' + texToHtml(c.trim()) + '</td>';

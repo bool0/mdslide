@@ -90,7 +90,7 @@ $$ \mathrm{MSE} = \frac{1}{N} \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 $$
 $$ A = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} $$
 ```
 
-Supported subset: `^` `_` sub/superscripts, `\frac`, `\sqrt`, Greek letters, ~90 common symbols (`\le`, `\infty`, `\in`, `\to`, `\partial`, …), big operators (`\sum` `\prod` `\int`), functions (`\sin` `\log` `\lim`, …), accents (`\bar` `\hat` `\vec`), `\mathbf` `\mathrm` `\text`, and matrix environments (`matrix`, `pmatrix`, `bmatrix`, `vmatrix`, `Vmatrix`, `cases`). Rendered with pure HTML/CSS — no external libraries. `\begin{align}` and other multi-line alignment environments are not supported.
+Supported subset: `^` `_` sub/superscripts, `\frac`, `\sqrt`, Greek letters, ~90 common symbols (`\le`, `\infty`, `\in`, `\to`, `\partial`, …), big operators (`\sum` `\prod` `\int`), functions (`\sin` `\log` `\lim`, …), accents (`\bar` `\hat` `\vec`), `\mathbf` `\mathrm` `\text`, and matrix environments (`matrix`, `pmatrix`, `bmatrix`, `vmatrix`, `Vmatrix`, `cases`). Multi-line alignment environments are supported too: `\begin{align}` (and `aligned`, `gather`, `split`, `eqnarray`) with `&` anchors and `\\` line breaks; `\label`/`\notag` are ignored gracefully. Rendered with pure HTML/CSS — no external libraries.
 
 Dollar amounts like `$5 and $10` are left alone (math requires non-space characters directly inside the delimiters).
 

@@ -320,8 +320,13 @@
   .slide .mfrac-t { font-size: .78em; }
   .slide .mfrac-d { font-size: 1em; }
   .slide .mfrac-binom .mnum { border-bottom: none; }
-  .slide .msqrt .mrad { border-top: 1.5px solid currentColor; margin-left: 1px; padding: 0 3px; }
-  .slide .mover { text-decoration: overline; }
+  .slide .msqrt { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 1px; }
+  .slide .msqrt .mrt { display: flex; align-items: flex-end; line-height: 1.15; }
+  .slide .msqrt .mrad { display: inline-block; align-self: stretch;
+                        border-top: 0.09em solid currentColor;
+                        margin-left: -0.1em; padding: 0.08em 0.15em 0 0.14em; line-height: 1.15; }
+  .slide .mover { display: inline-block; border-top: 0.085em solid currentColor;
+                  padding: 0.08em 0.05em 0; line-height: 1.1; }
   .slide .mfn, .slide .mtext { font-style: normal; }
   .slide .mbig { vertical-align: -0.08em; line-height: 1; }
   /* stacked operator limits (display-style \sum etc.) */
@@ -1027,7 +1032,7 @@
         }
         if (cmd === 'notag' || cmd === 'nonumber') return '';
         if (cmd === 'label' || cmd === 'tag') { rawGroupEsc(); return ''; }
-        if (cmd === 'sqrt') return '<span class="msqrt">√<span class="mrad">' + group() + '</span></span>';
+        if (cmd === 'sqrt') return '<span class="msqrt"><span class="mrt">√</span><span class="mrad">' + group() + '</span></span>';
         if (cmd === 'text' || cmd === 'mathrm' || cmd === 'operatorname') {
           return '<span class="mtext">' + rawGroupEsc() + '</span>';
         }

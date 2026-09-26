@@ -246,12 +246,12 @@
     border-radius: 5px;
   }
   .slide pre {
-    padding: 18px 22px;
+    padding: 13px 18px;
     border-radius: 10px;
-    margin: 14px 0;
+    margin: 10px 0;
     overflow: hidden;
   }
-  .slide pre code { padding: 0; background: none; font-size: 17px; line-height: 1.6; }
+  .slide pre code { padding: 0; background: none; font-size: 14px; line-height: 1.45; }
   .slide pre code.numbered { display: block; counter-reset: codeline; }
   .slide pre code.numbered .cl { display: block; }
   .slide pre code.numbered .cl::before {
@@ -324,6 +324,11 @@
   .slide .mover { text-decoration: overline; }
   .slide .mfn, .slide .mtext { font-style: normal; }
   .slide .mbig { vertical-align: -0.08em; line-height: 1; }
+  /* stacked operator limits (display-style \sum etc.) */
+  .slide .mlim { display: inline-flex; flex-direction: column; align-items: center;
+                 vertical-align: middle; margin: 0 3px; line-height: 1.1; }
+  .slide .mlim-t, .slide .mlim-b { font-size: .6em; line-height: 1.15; }
+  .slide .mlim-o { line-height: 1; }
   /* \left( … \right) — delimiters stretch to the content height */
   .slide .mlr { display: inline-flex; align-items: stretch; vertical-align: middle; margin: 0 1px; }
   .slide .mlr-c { display: inline-block; padding: 0 2px; }
@@ -333,6 +338,13 @@
   .slide .mwide-acc { display: block; height: .3em; }
   .slide .mwide-acc svg { display: block; width: 100%; height: 100%; }
   .slide .mwide-c { text-align: center; }
+  /* \underbrace / \overbrace with optional label */
+  .slide .mbrc { display: inline-flex; flex-direction: column; align-items: center;
+                 vertical-align: middle; margin: 0 3px; line-height: 1.15; }
+  .slide .mbrc-b { display: block; height: .34em; width: 100%; }
+  .slide .mbrc-b svg { display: block; width: 100%; height: 100%; }
+  .slide .mbrc-l { font-size: .62em; line-height: 1.25; }
+  .slide .mbrc-c { text-align: center; }
   /* \xrightarrow{…} — label(s) stacked over a stretchable arrow */
   .slide .mxarr { display: inline-flex; flex-direction: column; align-items: stretch;
                   vertical-align: middle; margin: 0 .2em; min-width: 2.2em; line-height: 1.15; }
@@ -373,6 +385,11 @@
   .slide .mp-r { border: 1.7px solid currentColor; border-left: none; border-radius: 0 14px 14px 0; }
   .slide .mb-l { border: 1.7px solid currentColor; border-right: none; }
   .slide .mb-r { border: 1.7px solid currentColor; border-left: none; }
+  .slide .mfl-l, .slide .mfl-r, .slide .mcl-l, .slide .mcl-r { width: 7px; flex: 0 0 auto; }
+  .slide .mfl-l { border: 1.7px solid currentColor; border-right: none; border-top: none; }
+  .slide .mfl-r { border: 1.7px solid currentColor; border-left: none; border-top: none; }
+  .slide .mcl-l { border: 1.7px solid currentColor; border-right: none; border-bottom: none; }
+  .slide .mcl-r { border: 1.7px solid currentColor; border-left: none; border-bottom: none; }
   .slide .mv-d { border-left: 1.7px solid currentColor; width: 2px; flex: 0 0 auto; }
   .slide .mvv-d { border-left: 1.7px solid currentColor; border-right: 1.7px solid currentColor; width: 5px; flex: 0 0 auto; }
   .slide .mcase-d { align-self: center; font-size: 1em; line-height: 1; transform: scaleY(var(--case-scale, 2)); transform-origin: center; margin-right: 2px; }
@@ -834,6 +851,8 @@
     dots: '…', ldots: '…', cdots: '⋯', prime: '′', hbar: 'ℏ', ell: 'ℓ',
     angle: '∠', perp: '⊥', parallel: '∥', emptyset: '∅', varnothing: '∅',
     star: '⋆', circ: '∘', bullet: '•', oplus: '⊕', otimes: '⊗',
+    lfloor: '⌊', rfloor: '⌋', lceil: '⌈', rceil: '⌉',
+    langle: '⟨', rangle: '⟩',
     odot: '⊙', ominus: '⊖', oslash: '⊘', ast: '∗',
     wedge: '∧', vee: '∨', cong: '≅', simeq: '≃', asymp: '≍',
     ll: '≪', gg: '≫', prec: '≺', succ: '≻', preceq: '⪯', succeq: '⪰',
@@ -844,9 +863,35 @@
     doteq: '≐', coloneqq: '≔', degree: '°', dagger: '†', ddagger: '‡',
     because: '∵', therefore: '∴', quad: ' ', qquad: '  '
   };
+  // large operators whose limits stack above/below in display math
+  var TEX_BIGOP = { sum: '∑', prod: '∏', coprod: '∐',
+    bigcup: '⋃', bigcap: '⋂', bigoplus: '⨁', bigotimes: '⨂',
+    bigodot: '⨀', bigvee: '⋁', bigwedge: '⋀', bigsqcup: '⨆',
+    int: '∫', oint: '∮', iint: '∬', iiint: '∭' };
+  // function-style operators whose subscript goes underneath in display math
+  var TEX_LIMFN = { lim: 1, limsup: 1, liminf: 1, max: 1, min: 1, sup: 1, inf: 1,
+    argmax: 1, argmin: 1, det: 1, gcd: 1, Pr: 1 };
+  var texDisplay = false; // true while rendering a $$ display block
+
   var TEX_FN = { sin: 1, cos: 1, tan: 1, cot: 1, sec: 1, csc: 1, log: 1, ln: 1,
     exp: 1, lim: 1, max: 1, min: 1, sup: 1, inf: 1, arg: 1, det: 1, gcd: 1,
     Pr: 1, sinh: 1, cosh: 1, tanh: 1 };
+
+  // letter-style alphabets: \mathbb (double-struck), \mathcal/\mathscr (script)
+  var BB_EXC = { C: '\u2102', H: '\u210D', N: '\u2115', P: '\u2119',
+                 Q: '\u211A', R: '\u211D', Z: '\u2124' };
+  var CAL_EXC = { B: '\u212C', E: '\u2130', F: '\u2131', H: '\u210B',
+                  I: '\u2110', L: '\u2112', M: '\u2133', R: '\u211B',
+                  e: '\u212F', g: '\u210A', o: '\u2134' };
+  function styledAlphabet(str, exc, upBase, lowBase, digitBase) {
+    return str.replace(/[A-Za-z0-9]/g, function (ch) {
+      if (exc[ch]) return exc[ch];
+      var c = ch.charCodeAt(0);
+      if (c >= 65 && c <= 90) return String.fromCodePoint(upBase + c - 65);
+      if (c >= 97 && c <= 122) return String.fromCodePoint(lowBase + c - 97);
+      return digitBase ? String.fromCodePoint(digitBase + c - 48) : ch;
+    });
+  }
 
   function texToHtml(src) {
     var i = 0, n = src.length;
@@ -886,6 +931,10 @@
       if (d === ']') return '<span class="mb-r"></span>';
       if (d === '|' || d === '∣') return '<span class="mv-d"></span>';
       if (d === '‖' || d === '∥') return '<span class="mvv-d"></span>';
+      if (d === '⌊') return '<span class="mfl-l"></span>'; // lfloor
+      if (d === '⌋') return '<span class="mfl-r"></span>'; // rfloor
+      if (d === '⌈') return '<span class="mcl-l"></span>'; // lceil
+      if (d === '⌉') return '<span class="mcl-r"></span>'; // rceil
       // braces / angle brackets: no border trick — show a big centered glyph
       return '<span class="mlr-fall">' + esc(d) + '</span>';
     }
@@ -913,6 +962,7 @@
           if (sc === ':') return ' ';
           if (sc === ';') return ' ';
           if (sc === '!') return '<span style="margin-left:-.17em"></span>';
+          if (sc === '|') return '\u2016'; // \| is the double bar
           if (sc === '\\') return ' ';
           return esc(sc);
         }
@@ -985,6 +1035,17 @@
         if (cmd === 'textit' || cmd === 'emph') return '<span class="mtext"><em>' + rawGroupEsc() + '</em></span>';
         if (cmd === 'texttt') return '<span class="mtext" style="font-family:monospace">' + rawGroupEsc() + '</span>';
         if (cmd === 'mathbf' || cmd === 'boldsymbol') return '<b>' + group() + '</b>';
+        if (cmd === 'mathbb') {
+          return '<span class="mtext">' + styledAlphabet(rawGroupEsc(), BB_EXC, 0x1D538, 0x1D552, 0x1D7D8) + '</span>';
+        }
+        if (cmd === 'mathcal' || cmd === 'mathscr') {
+          return '<span class="mtext">' + styledAlphabet(rawGroupEsc(), CAL_EXC, 0x1D49C, 0x1D4B6, 0) + '</span>';
+        }
+        if (cmd === 'mathfrak') {
+          return '<span class="mtext">' + styledAlphabet(rawGroupEsc(),
+            { C: '\u212D', H: '\u210C', I: '\u2111', R: '\u211C', Z: '\u2128' },
+            0x1D504, 0x1D51E, 0) + '</span>';
+        }
         if (cmd === 'mathit') return '<i>' + rawGroupEsc() + '</i>';
         if (cmd === 'bar' || cmd === 'overline') return '<span class="mover">' + group() + '</span>';
         if (cmd === 'hat') return group() + '̂';
@@ -998,6 +1059,26 @@
                  '</span><span class="mwide-c">' + group() + '</span></span>';
         }
         if (cmd === 'underline') return '<span style="text-decoration:underline">' + group() + '</span>';
+        if (cmd === 'underbrace' || cmd === 'overbrace') {
+          var braceContent = group();
+          var braceLabel = null;
+          while (src[i] === ' ') i++;
+          if (src[i] === '^' || src[i] === '_') { i++; braceLabel = group(); }
+          var under = cmd === 'underbrace';
+          var braceSvg = '<svg viewBox="0 0 100 20" preserveAspectRatio="none"><path d="' +
+            (under
+              ? 'M2,3 C2,11 8,13 20,13 L43,13 C48,13 50,15 50,19 C50,15 52,13 57,13 L80,13 C92,13 98,11 98,3'
+              : 'M2,17 C2,9 8,7 20,7 L43,7 C48,7 50,5 50,1 C50,5 52,7 57,7 L80,7 C92,7 98,9 98,17') +
+            '" fill="none" stroke="currentColor" stroke-width="4.5"/></svg>';
+          var parts = under
+            ? ['<span class="mbrc-c">' + braceContent + '</span>',
+               '<span class="mbrc-b">' + braceSvg + '</span>',
+               braceLabel !== null ? '<span class="mbrc-l">' + braceLabel + '</span>' : '']
+            : [braceLabel !== null ? '<span class="mbrc-l">' + braceLabel + '</span>' : '',
+               '<span class="mbrc-b">' + braceSvg + '</span>',
+               '<span class="mbrc-c">' + braceContent + '</span>'];
+          return '<span class="mbrc">' + parts.join('') + '</span>';
+        }
         if (cmd === 'left') {
           var ldelim = readDelim();
           var lrContent = '';
@@ -1015,6 +1096,34 @@
                  stretchDelim(rdelim, 'r') + '</span>';
         }
         if (cmd === 'right' || cmd === 'displaystyle') return ''; // stray \right
+        // big operators & \lim-style functions: stack limits in display math
+        if (TEX_BIGOP[cmd] || TEX_LIMFN[cmd]) {
+          var forceStack = null;
+          if (src.slice(i, i + 7) === '\\limits') { i += 7; forceStack = true; }
+          else if (src.slice(i, i + 9) === '\\nolimits') { i += 9; forceStack = false; }
+          var supH = null, subH = null;
+          while (src[i] === ' ') i++;
+          while (src[i] === '^' || src[i] === '_') {
+            var which = src[i]; i++;
+            var lg = group();
+            if (which === '^') supH = lg; else subH = lg;
+            while (src[i] === ' ') i++;
+          }
+          var opHtml = TEX_BIGOP[cmd]
+            ? '<span class="mop">' + TEX_BIGOP[cmd] + '</span>'
+            : '<span class="mfn">' + cmd + '</span>';
+          if (supH === null && subH === null) return opHtml;
+          var isIntegral = /int$|^oint$/.test(cmd);
+          var wantStack = forceStack !== null ? forceStack : (texDisplay && !isIntegral);
+          if (!wantStack) {
+            return opHtml + (subH !== null ? '<sub>' + subH + '</sub>' : '') +
+                   (supH !== null ? '<sup>' + supH + '</sup>' : '');
+          }
+          return '<span class="mlim">' +
+                 '<span class="mlim-t">' + (supH || '') + '</span>' +
+                 '<span class="mlim-o">' + opHtml + '</span>' +
+                 '<span class="mlim-b">' + (subH || '') + '</span></span>';
+        }
         if (TEX_FN[cmd]) return '<span class="mfn">' + cmd + '</span>';
         if (TEX_SYM.hasOwnProperty(cmd)) return TEX_SYM[cmd];
         return '<span class="mtext">' + esc('\\') + cmd + '</span>'; // unknown command: show as-is
@@ -1203,6 +1312,23 @@
     return out.join('');
   }
 
+  // split a table row on | while protecting pipes inside `code`, $math$,
+  // and backslash-escaped \| (which becomes a literal | outside math)
+  var PIPE_MASK = String.fromCharCode(3);
+  function splitTableRow(line) {
+    var t = line.replace(/`[^`]*`/g, function (m) {
+      return m.split('|').join(PIPE_MASK);
+    });
+    t = t.replace(/\$([^\s$][^$\n]*?)\$/g, function (m, inner) {
+      if (/\s$/.test(inner)) return m;
+      return m.split('|').join(PIPE_MASK);
+    });
+    t = t.replace(/\\\|/g, PIPE_MASK); // escaped pipe outside code/math -> literal
+    return t.split('|').slice(1, -1).map(function (c) {
+      return c.split(PIPE_MASK).join('|');
+    });
+  }
+
   function parseBlocks(lines) {
     var html = [], i = 0;
     while (i < lines.length) {
@@ -1275,7 +1401,9 @@
             i++;
           }
         }
+        texDisplay = true;
         html.push('<div class="math-block">' + texToHtml(mbuf.join(' ')) + '</div>');
+        texDisplay = false;
         continue;
       }
 
@@ -1324,11 +1452,11 @@
 
       // table
       if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
-        var headCells = line.split('|').slice(1, -1).map(function (c) { return '<th>' + inline(c.trim()) + '</th>'; });
+        var headCells = splitTableRow(line).map(function (c) { return '<th>' + inline(c.trim()) + '</th>'; });
         i += 2;
         var rows = [];
         while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) {
-          var cells = lines[i].split('|').slice(1, -1).map(function (c) { return '<td>' + inline(c.trim()) + '</td>'; });
+          var cells = splitTableRow(lines[i]).map(function (c) { return '<td>' + inline(c.trim()) + '</td>'; });
           rows.push('<tr>' + cells.join('') + '</tr>');
           i++;
         }
@@ -1351,12 +1479,78 @@
 
   // parse one slide's lines, honoring ||| column separators;
   // leading headings before the first ||| stay full-width above the columns
+  // ||| [width] [~] separates columns; |||( starts an explicit column region
+  // (content before it stays full-width) and |||) ends it (back to full-width)
+  var COL_START_RE = /^\|\|\|\(\s*([\d.]+)?\s*(~)?\s*$/;
+  var COL_END_RE = /^\|\|\|\)\s*$/;
+  var COL_SEP_RE = /^\|\|\|\s*([\d.]+)?\s*(~)?\s*$/;
+
+  function buildCols(segs, ratios, vcenter) {
+    var cols = segs.map(function (sg, idx) {
+      return '<div class="col' + (vcenter[idx] ? ' vcenter' : '') +
+             '" style="flex:' + ratios[idx] + '">' + parseBlocks(sg) + '</div>';
+    }).join('');
+    return '<div class="cols">' + cols + '</div>';
+  }
+
   function parseSlide(lines) {
+    var inFence = false, hasStart = false, j;
+    for (j = 0; j < lines.length; j++) {
+      if (/^```/.test(lines[j])) inFence = !inFence;
+      if (!inFence && COL_START_RE.test(lines[j])) { hasStart = true; break; }
+    }
+    return hasStart ? parseSlideExplicit(lines) : parseSlideLegacy(lines);
+  }
+
+  // explicit regions: full-width, then |||( col1 ||| col2 |||) full-width again, …
+  function parseSlideExplicit(lines) {
+    var out = [], mode = 'full', full = [];
+    var segs = [], ratios = [], vcenter = [], inFence = false;
+    function flushFull() {
+      if (full.some(function (l) { return !/^\s*$/.test(l); })) out.push(parseBlocks(full));
+      full = [];
+    }
+    function flushCols() {
+      if (segs.length) out.push(buildCols(segs, ratios, vcenter));
+      segs = []; ratios = []; vcenter = [];
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (/^```/.test(l)) inFence = !inFence;
+      var mS = !inFence && l.match(COL_START_RE);
+      if (mS) {
+        if (mode === 'cols') flushCols(); else flushFull();
+        mode = 'cols';
+        segs.push([]);
+        ratios.push(mS[1] ? parseFloat(mS[1]) || 1 : 1);
+        vcenter.push(!!mS[2]);
+        continue;
+      }
+      if (!inFence && mode === 'cols' && COL_END_RE.test(l)) {
+        flushCols();
+        mode = 'full';
+        continue;
+      }
+      var mSep = !inFence && mode === 'cols' && l.match(COL_SEP_RE);
+      if (mSep) {
+        segs.push([]);
+        ratios.push(mSep[1] ? parseFloat(mSep[1]) || 1 : 1);
+        vcenter.push(!!mSep[2]);
+        continue;
+      }
+      if (mode === 'cols') segs[segs.length - 1].push(l);
+      else full.push(l);
+    }
+    if (mode === 'cols') flushCols(); else flushFull();
+    return out.join('\n');
+  }
+
+  // no |||( marker: first ||| splits, leading headings stay full-width
+  function parseSlideLegacy(lines) {
     var segs = [[]], ratios = [1], vcenter = [false], inFence = false;
     for (var i = 0; i < lines.length; i++) {
       if (/^```/.test(lines[i])) inFence = !inFence;
-      // ||| [width] [~]   — ~ vertically centers that column instead of top-aligning
-      var m = !inFence && lines[i].match(/^\|\|\|\s*([\d.]+)?\s*(~)?\s*$/);
+      var m = !inFence && lines[i].match(COL_SEP_RE);
       if (m) {
         segs.push([]);
         ratios.push(m[1] ? parseFloat(m[1]) || 1 : 1);
@@ -1375,11 +1569,7 @@
     }
     var headerHtml = headerEnd ? parseBlocks(first.slice(0, headerEnd)) : '';
     segs[0] = first.slice(headerEnd);
-    var cols = segs.map(function (sg, idx) {
-      return '<div class="col' + (vcenter[idx] ? ' vcenter' : '') +
-             '" style="flex:' + ratios[idx] + '">' + parseBlocks(sg) + '</div>';
-    }).join('');
-    return headerHtml + '<div class="cols">' + cols + '</div>';
+    return headerHtml + buildCols(segs, ratios, vcenter);
   }
 
   // split the document into slides on --- (ignoring --- inside code fences)
@@ -1477,9 +1667,9 @@
     '## Column Tips',
     '',
     '- Each column starts at the top and flows down, independently',
-    '- Headings above the first `|||` stay full-width',
-    '- Use `||| 2` to make the next column twice as wide',
-    '- Use `||| ~` to center that column vertically instead',
+    '- `|||(` starts the columns: everything above it stays full-width',
+    '- `|||)` ends them — content below is full-width again',
+    '- Width & centering: `||| 2` doubles the next column, `||| ~` centers it',
     '',
     '> Note: `|||` is custom syntax of this tool — standard Markdown has',
     '> no column syntax (Marp etc. invent their own), so other renderers',

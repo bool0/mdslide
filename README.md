@@ -40,17 +40,27 @@ A slide with only a big heading becomes a centered title slide.
 
 ### Columns
 
-Split a slide with `|||` on its own line. Headings above the first `|||` stay full-width:
+Split a slide with `|||` on its own line. For full control, open the column region with `|||(` — everything before it stays full-width — and optionally close it with `|||)` to return to full-width below:
 
 ```markdown
 ## Text Left, Image Right
 
-Some explanation text.
+This intro stays full-width.
+
+|||(
+
+Left column text, top-down.
 
 |||
 
 ![figure](figure.png)
+
+|||)
+
+Full-width footnote under both columns.
 ```
+
+Without `|||(`, the first `|||` starts the second column and only leading headings stay full-width (backward-compatible shorthand).
 
 Each column starts at the **top** of the slide and flows downward, and columns are fully independent — a list in one column has nothing to do with a list in the next (numbering restarts, nesting is separate).
 
@@ -154,6 +164,12 @@ Click **📁 Project** and pick a folder (Chrome/Edge; uses the [File System Acc
 - **💾 Save** (`Ctrl/Cmd+S`) writes back to the opened file; with no file open it creates one in the folder
 - **🖼 Image** copies the picked image into the project folder and inserts `![name](name)` at the cursor
 - Reference images in Markdown by filename or relative path — they resolve against the project folder
+- **Size images** with a `|` suffix in the alt text (Obsidian-style):
+  - `![diagram|300](d.png)` — width 300 px, height keeps the aspect ratio
+  - `![diagram|50%](d.png)` — half the content width
+  - `![diagram|300x80](d.png)` — exact box (may change the aspect ratio)
+  - `![diagram|x200](d.png)` — height only, width keeps the aspect ratio
+- A paragraph containing just one image centers it; unsized images are capped at 320 px tall, explicit sizes override the cap
 
 On Safari/Firefox the folder features are unavailable; **Import** (file picker) and **Save** (download) still work.
 

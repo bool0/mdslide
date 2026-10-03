@@ -1,6 +1,6 @@
 # MD Slide
 
-A lightweight, **zero-dependency** Markdown → slides tool that runs entirely in your browser. One HTML file, no installation, no build step, no network required. Works on Windows and macOS.
+A lightweight Markdown → slides tool that runs entirely in your browser. One self-contained HTML file (Mermaid embedded for diagrams), no installation, no build step, no network required. Works on Windows and macOS.
 
 **To use it: download [`mdslide.html`](mdslide.html) and double-click it.** That's the whole setup.
 
@@ -12,6 +12,7 @@ A lightweight, **zero-dependency** Markdown → slides tool that runs entirely i
 - **Project folders** — open a local folder, browse its files in a sidebar, save and load `.md` files in place (Chrome/Edge)
 - **Local images** — insert images from disk; they're copied into your project folder so references survive reloads
 - **Mind maps** — draw one from an indented list, rendered as SVG
+- **Flowcharts & diagrams** — fenced ```` ```mermaid ```` blocks (flowchart, sequence, state, …) rendered by an embedded copy of Mermaid, fully offline; diagrams auto-scale to fit the slide
 - **Math** — `$inline$` and `$$display$$` TeX subset: fractions, roots, sub/superscripts, Greek letters, big operators, matrices
 - **Citations & BibTeX** — cite with `[@key]`, load `.bib` files or embed one in the document, auto-generated reference list with overflow pagination
 - **Multi-column layouts** — split any slide into columns
@@ -88,6 +89,24 @@ A fenced `mindmap` block turns an indented list into a colored mind map:
   - Branch B
 ```
 ````
+
+### Flowcharts (Mermaid)
+
+A fenced `mermaid` block renders any [Mermaid](https://mermaid.js.org) diagram:
+
+````markdown
+```mermaid
+flowchart LR
+  A[quantize INT8] --> B{fp16?}
+  B -- yes --> C[CLEAN]
+  B -- no --> D[FIRES]
+```
+````
+
+Notes:
+
+- Mermaid v11 (MIT license) is **embedded inside `mdslide.html`** — no network, no extra files, works fully offline. It sits inert at the end of the file and is only evaluated the first time a document actually uses a mermaid block, so decks without diagrams pay no startup cost. This is what grows the file to ~3.5 MB.
+- Diagrams are capped at the slide width / 380 px height and participate in autofit, so they scale with the rest of the content; rendered SVG is cached so PDF export matches the preview.
 
 ### Math
 
@@ -196,4 +215,4 @@ You are solely responsible for the content you create, store, and export with th
 
 [Apache 2.0](LICENSE) — see also [NOTICE](NOTICE).
 
-The tool has **no third-party dependencies** and bundles no third-party code, fonts, or assets; the Markdown parser, math renderer, and mind-map layout are original implementations. Apache 2.0 grants you the right to use, modify, and redistribute this software, including commercially, provided you keep the copyright and license notices. It does not grant rights to any trademark.
+The tool embeds one third-party component: **Mermaid v11** (MIT license, © Knut Sveidqvist and contributors; see [NOTICE](NOTICE) for the full license text). Otherwise it bundles no third-party code, fonts, or assets; the Markdown parser, math renderer, and mind-map layout are original implementations. Apache 2.0 grants you the right to use, modify, and redistribute this software, including commercially, provided you keep the copyright and license notices. It does not grant rights to any trademark.

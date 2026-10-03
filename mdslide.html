@@ -217,7 +217,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start; /* headings stay pinned at the top */
     padding: 56px 72px;
     border-radius: 4px;
     box-shadow: 0 8px 40px rgba(0,0,0,.45);
@@ -266,13 +266,15 @@
     user-select: none;
   }
   .slide table { border-collapse: collapse; margin: 14px 0; font-size: 20px; }
+  .slide table.md-table { width: 100%; }
   .slide th, .slide td { border: 1px solid; padding: 8px 18px; }
   .slide img { max-width: 100%; max-height: 320px; border-radius: 8px; margin: 10px 0; object-fit: contain; }
   .slide p > img:only-child { display: block; margin: 10px auto; }
   .slide a { text-decoration: underline; }
   .slide hr { display: none; }
-  .slide.is-title { text-align: center; align-items: center; }
+  .slide.is-title { text-align: center; align-items: center; justify-content: center; }
   .slide.is-title h1 { font-size: 64px; }
+  .slide .fitbox { width: 100%; flex: 0 0 auto; }
   .slide .page-num {
     position: absolute;
     right: 28px;
@@ -794,11 +796,7 @@
   /* Offscreen measurer for overflow pagination */
   var measurer = null;
   function slideOverflows(html) {
-    if (!measurer) {
-      measurer = document.createElement('div');
-      measurer.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;';
-      document.body.appendChild(measurer);
-    }
+    ensureMeasurer();
     measurer.innerHTML = '';
     var el = document.createElement('div');
     el.className = 'slide ' + theme;
@@ -1482,7 +1480,7 @@
           rows.push('<tr>' + cells.join('') + '</tr>');
           i++;
         }
-        html.push('<table><thead><tr>' + headCells.join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>');
+        html.push('<table class="md-table"><thead><tr>' + headCells.join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>');
         continue;
       }
 
@@ -1791,8 +1789,46 @@
   function buildSlideEl(html, idx, total, isTitle) {
     var el = document.createElement('div');
     el.className = 'slide ' + theme + (isTitle ? ' is-title' : '');
-    el.innerHTML = html + '<div class="page-num">' + (idx + 1) + ' / ' + total + '</div>';
+    el.innerHTML = '<div class="fitbox">' + html + '</div>' +
+                   '<div class="page-num">' + (idx + 1) + ' / ' + total + '</div>';
     return el;
+  }
+
+  // ensure the offscreen measurer exists (shared by pagination and autofit)
+  function ensureMeasurer() {
+    if (!measurer) {
+      measurer = document.createElement('div');
+      measurer.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;';
+      document.body.appendChild(measurer);
+    }
+    return measurer;
+  }
+
+  // PowerPoint-style autofit: if the content is taller than the slide body,
+  // scale it down just enough to fit (never up). Width is compensated so the
+  // scaled content still spans the full slide; floor at 40%.
+  var FIT_W = 816, FIT_H = 428; // 960/540 minus the 72/56 slide padding
+  function autofitSlide(el) {
+    var box = el.querySelector('.fitbox');
+    if (!box) return;
+    box.style.cssText = '';
+    if (box.offsetHeight <= FIT_H + 1) return; // fits at full size
+    var MIN = 0.4;
+    var s = FIT_H / box.offsetHeight, hh;
+    for (var k = 0; k < 4; k++) {
+      s = Math.max(MIN, Math.min(1, s));
+      box.style.width = (FIT_W / s) + 'px';
+      hh = box.offsetHeight;
+      if (hh * s <= FIT_H + 1 || s <= MIN + 0.001) break;
+      s = FIT_H / hh;
+    }
+    s = Math.max(MIN, Math.min(1, s));
+    box.style.width = (FIT_W / s) + 'px';
+    hh = box.offsetHeight;
+    box.style.alignSelf = 'flex-start';
+    box.style.transformOrigin = '0 0';
+    box.style.transform = 'scale(' + s + ')';
+    box.style.marginBottom = (-hh * (1 - s)) + 'px';
   }
 
   // a slide with an h1 and no lists/code/tables is treated as a centered title slide
@@ -1842,7 +1878,9 @@
   function showSlide() {
     slideWrap.innerHTML = '';
     var html = slidesHtml[current];
-    slideWrap.appendChild(buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html)));
+    var el = buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html));
+    slideWrap.appendChild(el);
+    autofitSlide(el);
     counter.textContent = (current + 1) + ' / ' + slidesHtml.length;
     fit();
   }
@@ -2214,9 +2252,14 @@
   /* ---------- PDF export (browser print) ---------- */
   function buildPrintArea() {
     printArea.innerHTML = '';
+    var host = ensureMeasurer();
     slidesHtml.forEach(function (html, i) {
-      printArea.appendChild(buildSlideEl(html, i, slidesHtml.length, isTitleSlide(html)));
+      var el = buildSlideEl(html, i, slidesHtml.length, isTitleSlide(html));
+      host.appendChild(el);   // measurable while printArea is display:none
+      autofitSlide(el);
+      printArea.appendChild(el);
     });
+    host.innerHTML = '';
   }
   document.getElementById('pdfBtn').addEventListener('click', function () {
     buildPrintArea();

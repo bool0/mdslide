@@ -16,6 +16,7 @@ A lightweight, **zero-dependency** Markdown → slides tool that runs entirely i
 - **Citations & BibTeX** — cite with `[@key]`, load `.bib` files or embed one in the document, auto-generated reference list with overflow pagination
 - **Multi-column layouts** — split any slide into columns
 - **Nested lists, tables, code blocks with line numbers**, blockquotes, links
+- **Autofit** — if a slide's content is taller than the page, it shrinks just enough to fit (PowerPoint-style, down to 40%); sparse slides never get enlarged
 - **Autosave** — content persists in `localStorage`; keyboard navigation with `←` `→`, save with `Ctrl/Cmd+S`
 
 ## Syntax

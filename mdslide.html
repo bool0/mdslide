@@ -558,7 +558,7 @@
 <body>
 
 <div id="toolbar">
-  <div class="logo" title="MD Slide build 2026-11-08b — Apache 2.0. Provided &quot;as is&quot;, without warranty of any kind; the authors are not liable for any damages or data loss. Your content stays in this browser and in files you choose — nothing is uploaded. Keep your own backups.">MD<span>Slide</span></div>
+  <div class="logo" title="MD Slide build 2026-11-08d — Apache 2.0. Provided &quot;as is&quot;, without warranty of any kind; the authors are not liable for any damages or data loss. Your content stays in this browser and in files you choose — nothing is uploaded. Keep your own backups.">MD<span>Slide</span></div>
   <button id="folderBtn" title="Open a local folder as project">&#128193; Project</button>
   <button id="saveBtn" title="Save markdown (Ctrl/Cmd+S)">&#128190; Save</button>
   <button id="importBtn" title="Import a markdown file">&#11014; Import</button>
@@ -1967,17 +1967,25 @@
     if (FIT_H <= 40) FIT_H = 40;
     if (box.offsetHeight <= FIT_H + 1) return; // fits at full size
     var MIN = 0.4;
-    var s = FIT_H / box.offsetHeight, hh;
-    for (var k = 0; k < 4; k++) {
-      s = Math.max(MIN, Math.min(1, s));
-      box.style.width = (FIT_W / s) + 'px';
-      hh = box.offsetHeight;
-      if (hh * s <= FIT_H + 1 || s <= MIN + 0.001) break;
-      s = FIT_H / hh;
+    // binary-search the LARGEST scale that fits: width compensation changes
+    // line wrapping, so a one-shot estimate overshoots badly on long text
+    // (tiny type with big empty space below)
+    function fitsAt(sc) {
+      box.style.width = (FIT_W / sc) + 'px';
+      return box.offsetHeight * sc <= FIT_H + 1;
     }
-    s = Math.max(MIN, Math.min(1, s));
+    var lo = MIN, hi = 1;
+    if (!fitsAt(MIN)) {
+      var s = MIN;
+    } else {
+      for (var k = 0; k < 7; k++) {
+        var mid = (lo + hi) / 2;
+        if (fitsAt(mid)) lo = mid; else hi = mid;
+      }
+      var s = lo;
+    }
     box.style.width = (FIT_W / s) + 'px';
-    hh = box.offsetHeight;
+    var hh = box.offsetHeight;
     box.style.alignSelf = 'flex-start';
     box.style.transformOrigin = '0 0';
     box.style.transform = 'scale(' + s + ')';
@@ -2112,21 +2120,31 @@
     });
   }
 
+  // idempotent re-layout of one slide: autofit the body, rebuild the strip
+  function refitSlide(el, idx) {
+    if (!el.parentNode) return; // slide was replaced meanwhile
+    autofitSlide(el, idx);
+    var f = el.querySelector('.secflow');
+    if (f) f.remove();
+    maybeAddFlow(el, idx);
+  }
+
   function showSlide() {
     slideWrap.innerHTML = '';
     var html = slidesHtml[current];
     var el = buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html));
+    var builtFor = current;
     slideWrap.appendChild(el);
-    autofitSlide(el, current);
-    maybeAddFlow(el, current);
+    refitSlide(el, builtFor);
     renderMermaidIn(el).then(function (filled) {
-      if (filled && el.parentNode) {
-        autofitSlide(el, current); // re-fit once diagrams arrive
-        var oldFlow = el.querySelector('.secflow');
-        if (oldFlow) oldFlow.remove();
-        maybeAddFlow(el, current); // re-evaluate with the real diagram height
-      }
+      if (filled) refitSlide(el, builtFor); // re-fit once diagrams arrive
     });
+    // fonts can finish loading after the first measurement (metrics swap is
+    // common on Windows); re-fit when they settle, and once next frame
+    requestAnimationFrame(function () { refitSlide(el, builtFor); });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { refitSlide(el, builtFor); });
+    }
     counter.textContent = (current + 1) + ' / ' + slidesHtml.length;
     fit();
   }
@@ -2537,6 +2555,7 @@
 
   setFileLabel();
   render();
+  try { console.log('MD Slide build 2026-11-08d'); } catch (e) {}
 })();
 </script>
 <!-- Mermaid v11.17.2 | MIT License | Copyright (c) Knut Sveidqvist and Mermaid contributors

@@ -1954,13 +1954,15 @@
   // scale it down just enough to fit (never up). Width is compensated so the
   // scaled content still spans the full slide; floor at 40%.
   var FIT_W = 816; // 960 minus the 72px side padding
-  function autofitSlide(el) {
+  function autofitSlide(el, idx) {
     var box = el.querySelector('.fitbox');
     if (!box) return;
     box.style.cssText = '';
     // space below the fixed headings down to the bottom padding (540 - 56),
-    // minus the section-flow strip when the deck has one (strip sits at y>=450)
-    var fitBottom = (typeof secFlow !== 'undefined' && secFlow.items.length >= 2) ? 440 : 484;
+    // minus the section-flow strip when the deck has one (strip sits at y>=450);
+    // the cover (slide 0) carries no strip and keeps the full height
+    var hasStrip = typeof secFlow !== 'undefined' && secFlow.items.length >= 2 && idx !== 0;
+    var fitBottom = hasStrip ? 440 : 484;
     var FIT_H = fitBottom - box.offsetTop;
     if (FIT_H <= 40) FIT_H = 40;
     if (box.offsetHeight <= FIT_H + 1) return; // fits at full size
@@ -2085,6 +2087,7 @@
   }
   function maybeAddFlow(el, idx) {
     if (secFlow.items.length < 2) return;
+    if (idx === 0) return; // the first slide is the cover - keep it clean
     var MIN_STRIP_SCALE = 0.72;
     var cur = secFlow.perSlide[idx];
     var strip = document.createElement('div');
@@ -2114,11 +2117,11 @@
     var html = slidesHtml[current];
     var el = buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html));
     slideWrap.appendChild(el);
-    autofitSlide(el);
+    autofitSlide(el, current);
     maybeAddFlow(el, current);
     renderMermaidIn(el).then(function (filled) {
       if (filled && el.parentNode) {
-        autofitSlide(el); // re-fit once diagrams arrive
+        autofitSlide(el, current); // re-fit once diagrams arrive
         var oldFlow = el.querySelector('.secflow');
         if (oldFlow) oldFlow.remove();
         maybeAddFlow(el, current); // re-evaluate with the real diagram height
@@ -2502,7 +2505,7 @@
       var el = buildSlideEl(html, i, slidesHtml.length, isTitleSlide(html));
       host.appendChild(el);   // measurable while printArea is display:none
       renderMermaidIn(el);    // cached diagrams fill synchronously
-      autofitSlide(el);
+      autofitSlide(el, i);
       maybeAddFlow(el, i);
       printArea.appendChild(el);
     });

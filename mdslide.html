@@ -282,9 +282,15 @@
     right: 72px;
     bottom: 42px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
+  }
+  .slide .secflow-inner {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+    white-space: nowrap;
+    transform-origin: center bottom;
   }
   .slide .secflow-item {
     font-size: 13px;
@@ -293,15 +299,16 @@
     border-radius: 999px;
     border: 1.5px solid currentColor;
     opacity: .5;
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 0 0 auto;
     white-space: nowrap;
+    cursor: pointer;
   }
+  .slide .secflow-item:hover { opacity: .85; }
+  .slide .secflow-more { cursor: pointer; }
+  .slide .secflow-more:hover { opacity: .8; }
   .slide .secflow-item.active { opacity: 1; font-weight: 700; }
   .slide .secflow-arrow { opacity: .4; font-size: 13px; flex: 0 0 auto; }
+  .slide .secflow-more { opacity: .4; font-size: 14px; flex: 0 0 auto; letter-spacing: 1px; }
   .theme-clean .secflow-item.active { background: #1a56db; border-color: #1a56db; color: #fff; }
   .theme-dark .secflow-item.active { background: #5dd3e8; border-color: #5dd3e8; color: #16181d; }
   .theme-academic .secflow-item.active { background: #14335c; border-color: #14335c; color: #fff; }
@@ -1951,8 +1958,10 @@
     var box = el.querySelector('.fitbox');
     if (!box) return;
     box.style.cssText = '';
-    // space below the fixed headings down to the bottom padding (540 - 56)
-    var FIT_H = 484 - box.offsetTop;
+    // space below the fixed headings down to the bottom padding (540 - 56),
+    // minus the section-flow strip when the deck has one (strip sits at y>=450)
+    var fitBottom = (typeof secFlow !== 'undefined' && secFlow.items.length >= 2) ? 440 : 484;
+    var FIT_H = fitBottom - box.offsetTop;
     if (FIT_H <= 40) FIT_H = 40;
     if (box.offsetHeight <= FIT_H + 1) return; // fits at full size
     var MIN = 0.4;
@@ -2045,23 +2054,59 @@
     return { items: items, perSlide: perSlide };
   }
 
-  // append the flow strip when the slide leaves enough free space at the bottom
+  // append the flow strip on every slide. Titles are never ellipsized:
+  // if the full flow would need to scale below MIN, show only the current
+  // section with a few neighbours (\u22ef marks the hidden ones), then scale
+  // the remainder as a whole if still needed.
+  function buildFlowHtml(cur, radius) {
+    var items = secFlow.items, N = items.length;
+    var start = 0, end = N - 1;
+    if (isFinite(radius)) {
+      var size = Math.min(N, radius * 2 + 1);
+      var c0 = cur < 0 ? 0 : cur;
+      start = Math.max(0, Math.min(c0 - radius, N - size));
+      end = start + size - 1;
+    }
+    var parts = [];
+    if (start > 0) {
+      parts.push('<span class="secflow-more" data-go="' + items[start - 1].first +
+                 '" title="' + items[start - 1].text + '">\u22ef</span>');
+    }
+    for (var k = start; k <= end; k++) {
+      parts.push('<span class="secflow-item' + (k === cur ? ' active' : '') +
+                 '" data-go="' + items[k].first + '">' + items[k].text + '</span>');
+    }
+    if (end < N - 1) {
+      parts.push('<span class="secflow-more" data-go="' + items[end + 1].first +
+                 '" title="' + items[end + 1].text + '">\u22ef</span>');
+    }
+    return '<span class="secflow-inner">' +
+           parts.join('<span class="secflow-arrow">\u2192</span>') + '</span>';
+  }
   function maybeAddFlow(el, idx) {
     if (secFlow.items.length < 2) return;
-    if (el.className.indexOf('is-title') >= 0) return;
-    var box = el.querySelector('.fitbox');
-    if (!box) return;
-    var m = box.style.transform.match(/scale\(([\d.]+)\)/);
-    var bottom = box.offsetTop + box.offsetHeight * (m ? +m[1] : 1);
-    if (bottom > 450) return; // body reaches too far down - skip the strip
+    var MIN_STRIP_SCALE = 0.72;
     var cur = secFlow.perSlide[idx];
-    var parts = secFlow.items.map(function (it, k) {
-      return '<span class="secflow-item' + (k === cur ? ' active' : '') + '">' + it.text + '</span>';
-    });
     var strip = document.createElement('div');
     strip.className = 'secflow';
-    strip.innerHTML = parts.join('<span class="secflow-arrow">\u2192</span>');
     el.appendChild(strip);
+    var radii = [Infinity, 2, 1];
+    var w = 0;
+    for (var r = 0; r < radii.length; r++) {
+      strip.innerHTML = buildFlowHtml(cur, radii[r]);
+      w = strip.firstChild.scrollWidth;
+      if (w <= 816 / MIN_STRIP_SCALE) break; // fits at >= MIN scale
+    }
+    if (w > 816) strip.firstChild.style.transform = 'scale(' + (816 / w) + ')';
+    strip.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('[data-go]') : null;
+      if (!t) return;
+      var n = parseInt(t.getAttribute('data-go'), 10);
+      if (!isNaN(n) && n >= 0 && n < slidesHtml.length) {
+        current = n;
+        showSlide();
+      }
+    });
   }
 
   function showSlide() {
@@ -2072,7 +2117,12 @@
     autofitSlide(el);
     maybeAddFlow(el, current);
     renderMermaidIn(el).then(function (filled) {
-      if (filled && el.parentNode) autofitSlide(el); // re-fit once diagrams arrive
+      if (filled && el.parentNode) {
+        autofitSlide(el); // re-fit once diagrams arrive
+        var oldFlow = el.querySelector('.secflow');
+        if (oldFlow) oldFlow.remove();
+        maybeAddFlow(el, current); // re-evaluate with the real diagram height
+      }
     });
     counter.textContent = (current + 1) + ' / ' + slidesHtml.length;
     fit();
@@ -2164,6 +2214,8 @@
     if (document.activeElement === editor) return;
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(-1);
     if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') go(1);
+    if (e.key === 'Home') { current = 0; showSlide(); }
+    if (e.key === 'End') { current = slidesHtml.length - 1; showSlide(); }
   });
 
   /* ---------- Theme ---------- */

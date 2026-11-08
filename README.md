@@ -18,7 +18,7 @@ A lightweight Markdown → slides tool that runs entirely in your browser. One s
 - **Multi-column layouts** — split any slide into columns
 - **Nested lists, tables, code blocks with line numbers**, blockquotes, links
 - **Autofit** — if a slide's body is taller than the page, it shrinks just enough to fit (PowerPoint-style, down to 40%); headings are exempt, so the same heading level always renders at the same size, and sparse slides never get enlarged
-- **Section progress strip** — on slides with spare room at the bottom, a `title1 → title2 → title3` flow of the deck's section headings appears automatically, highlighting the current section (uses the most important heading level that occurs more than once)
+- **Section progress strip** — every slide shows a `title1 → title2 → title3` flow of the deck's section headings at the bottom, highlighting the current section (uses the most important heading level that occurs more than once); titles are never cut off: when the full flow gets too wide the strip first narrows to the current section and its neighbours (⋯ marks hidden sections), then scales as a whole if still needed; autofit reserves its row so the body never overlaps it. Pills are clickable and jump to that section (the ⋯ markers jump to the nearest hidden one)
 - **Autosave** — content persists in `localStorage`; keyboard navigation with `←` `→`, save with `Ctrl/Cmd+S`
 
 ## Syntax

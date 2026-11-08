@@ -17,7 +17,8 @@ A lightweight Markdown → slides tool that runs entirely in your browser. One s
 - **Citations & BibTeX** — cite with `[@key]`, load `.bib` files or embed one in the document, auto-generated reference list with overflow pagination
 - **Multi-column layouts** — split any slide into columns
 - **Nested lists, tables, code blocks with line numbers**, blockquotes, links
-- **Autofit** — if a slide's content is taller than the page, it shrinks just enough to fit (PowerPoint-style, down to 40%); sparse slides never get enlarged
+- **Autofit** — if a slide's body is taller than the page, it shrinks just enough to fit (PowerPoint-style, down to 40%); headings are exempt, so the same heading level always renders at the same size, and sparse slides never get enlarged
+- **Section progress strip** — on slides with spare room at the bottom, a `title1 → title2 → title3` flow of the deck's section headings appears automatically, highlighting the current section (uses the most important heading level that occurs more than once)
 - **Autosave** — content persists in `localStorage`; keyboard navigation with `←` `→`, save with `Ctrl/Cmd+S`
 
 ## Syntax

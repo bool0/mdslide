@@ -275,6 +275,38 @@
   .slide.is-title { text-align: center; align-items: center; justify-content: center; }
   .slide.is-title h1 { font-size: 64px; }
   .slide .fitbox { width: 100%; flex: 0 0 auto; }
+  /* section-progress flow strip (auto-added when bottom space allows) */
+  .slide .secflow {
+    position: absolute;
+    left: 72px;
+    right: 72px;
+    bottom: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .slide .secflow-item {
+    font-size: 13px;
+    line-height: 1.3;
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1.5px solid currentColor;
+    opacity: .5;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .slide .secflow-item.active { opacity: 1; font-weight: 700; }
+  .slide .secflow-arrow { opacity: .4; font-size: 13px; flex: 0 0 auto; }
+  .theme-clean .secflow-item.active { background: #1a56db; border-color: #1a56db; color: #fff; }
+  .theme-dark .secflow-item.active { background: #5dd3e8; border-color: #5dd3e8; color: #16181d; }
+  .theme-academic .secflow-item.active { background: #14335c; border-color: #14335c; color: #fff; }
+  .theme-gradient .secflow-item.active { background: #ffd76e; border-color: #ffd76e; color: #4b2f8f; }
+  .theme-paper .secflow-item.active { background: #7a3b2e; border-color: #7a3b2e; color: #fff; }
   .slide .page-num {
     position: absolute;
     right: 28px;
@@ -493,6 +525,15 @@
       border-radius: 0;
       page-break-after: always;
       break-after: page;
+      /* visually center on paper when the browser ignores the custom page
+         size (Safari falls back to A4/Letter); computes to 0 in Chrome where
+         the page is exactly 960x540, keeping its output pixel-identical */
+      position: relative;
+      /* clamp so a misreported 100vh (seen in some Safari print pipelines)
+         can shift the slide at most 260px - it can never blank the page */
+      top: clamp(0px, calc((100vh - 540px) / 2 - 8mm), 260px);
+      margin-left: auto;
+      margin-right: auto;
     }
     #printArea .slide:last-child { page-break-after: auto; break-after: auto; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -862,6 +903,7 @@
     angle: '∠', perp: '⊥', parallel: '∥', emptyset: '∅', varnothing: '∅',
     star: '⋆', circ: '∘', bullet: '•', oplus: '⊕', otimes: '⊗',
     lfloor: '⌊', rfloor: '⌋', lceil: '⌈', rceil: '⌉',
+    lvert: '|', rvert: '|', vert: '|', lVert: '‖', rVert: '‖', Vert: '‖',
     langle: '⟨', rangle: '⟩',
     odot: '⊙', ominus: '⊖', oslash: '⊘', ast: '∗',
     wedge: '∧', vee: '∨', cong: '≅', simeq: '≃', asymp: '≍',
@@ -1879,7 +1921,14 @@
   function buildSlideEl(html, idx, total, isTitle) {
     var el = document.createElement('div');
     el.className = 'slide ' + theme + (isTitle ? ' is-title' : '');
-    el.innerHTML = '<div class="fitbox">' + html + '</div>' +
+    // leading headings stay OUTSIDE the autofit box: same heading level always
+    // renders at the same size, no matter how full the slide body is
+    var headHtml = '', rest = html, hm;
+    while ((hm = rest.match(/^\s*<h([1-6])>[\s\S]*?<\/h\1>/))) {
+      headHtml += hm[0];
+      rest = rest.slice(hm[0].length);
+    }
+    el.innerHTML = headHtml + '<div class="fitbox">' + rest + '</div>' +
                    '<div class="page-num">' + (idx + 1) + ' / ' + total + '</div>';
     return el;
   }
@@ -1897,11 +1946,14 @@
   // PowerPoint-style autofit: if the content is taller than the slide body,
   // scale it down just enough to fit (never up). Width is compensated so the
   // scaled content still spans the full slide; floor at 40%.
-  var FIT_W = 816, FIT_H = 428; // 960/540 minus the 72/56 slide padding
+  var FIT_W = 816; // 960 minus the 72px side padding
   function autofitSlide(el) {
     var box = el.querySelector('.fitbox');
     if (!box) return;
     box.style.cssText = '';
+    // space below the fixed headings down to the bottom padding (540 - 56)
+    var FIT_H = 484 - box.offsetTop;
+    if (FIT_H <= 40) FIT_H = 40;
     if (box.offsetHeight <= FIT_H + 1) return; // fits at full size
     var MIN = 0.4;
     var s = FIT_H / box.offsetHeight, hh;
@@ -1961,8 +2013,55 @@
     slidesHtml = expanded;
 
     if (slidesHtml.length === 0) slidesHtml = ['<h2 style="opacity:.4">Empty slide</h2>'];
+    secFlow = computeSecFlow();
     if (current >= slidesHtml.length) current = slidesHtml.length - 1;
     showSlide();
+  }
+
+  /* ---------- Section-progress flow (fills generous bottom whitespace) ----------
+     Uses the most important heading level that occurs 2+ times (as each slide's
+     leading heading). Consecutive repeats (e.g. paginated References) merge. */
+  var secFlow = { items: [], perSlide: [] };
+  function computeSecFlow() {
+    var heads = slidesHtml.map(function (h) {
+      var m = h.match(/^\s*<h([1-6])>([\s\S]*?)<\/h\1>/);
+      return m ? { lv: +m[1], text: m[2].replace(/<[^>]*>/g, '').trim() } : null;
+    });
+    var items = [];
+    for (var L = 1; L <= 6; L++) {
+      var seq = [];
+      heads.forEach(function (hd, i) {
+        if (hd && hd.lv === L) {
+          if (!seq.length || seq[seq.length - 1].text !== hd.text) seq.push({ text: hd.text, first: i });
+        }
+      });
+      if (seq.length >= 2) { items = seq; break; }
+    }
+    var perSlide = slidesHtml.map(function (_, i) {
+      var cur = -1;
+      for (var k = 0; k < items.length; k++) if (items[k].first <= i) cur = k;
+      return cur;
+    });
+    return { items: items, perSlide: perSlide };
+  }
+
+  // append the flow strip when the slide leaves enough free space at the bottom
+  function maybeAddFlow(el, idx) {
+    if (secFlow.items.length < 2) return;
+    if (el.className.indexOf('is-title') >= 0) return;
+    var box = el.querySelector('.fitbox');
+    if (!box) return;
+    var m = box.style.transform.match(/scale\(([\d.]+)\)/);
+    var bottom = box.offsetTop + box.offsetHeight * (m ? +m[1] : 1);
+    if (bottom > 450) return; // body reaches too far down - skip the strip
+    var cur = secFlow.perSlide[idx];
+    var parts = secFlow.items.map(function (it, k) {
+      return '<span class="secflow-item' + (k === cur ? ' active' : '') + '">' + it.text + '</span>';
+    });
+    var strip = document.createElement('div');
+    strip.className = 'secflow';
+    strip.innerHTML = parts.join('<span class="secflow-arrow">\u2192</span>');
+    el.appendChild(strip);
   }
 
   function showSlide() {
@@ -1971,6 +2070,7 @@
     var el = buildSlideEl(html, current, slidesHtml.length, isTitleSlide(html));
     slideWrap.appendChild(el);
     autofitSlide(el);
+    maybeAddFlow(el, current);
     renderMermaidIn(el).then(function (filled) {
       if (filled && el.parentNode) autofitSlide(el); // re-fit once diagrams arrive
     });
@@ -2351,6 +2451,7 @@
       host.appendChild(el);   // measurable while printArea is display:none
       renderMermaidIn(el);    // cached diagrams fill synchronously
       autofitSlide(el);
+      maybeAddFlow(el, i);
       printArea.appendChild(el);
     });
     host.innerHTML = '';
